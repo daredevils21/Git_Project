@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="dummy_image_processing_plugin.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
