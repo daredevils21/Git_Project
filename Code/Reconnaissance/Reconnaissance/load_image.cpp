@@ -6,7 +6,6 @@
  *
  */
 
-/*
 #include <boost/shared_array.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -39,7 +38,7 @@ int main( int argc, char **argv)
 
 	// Check file size
 	image_file.seekg(0, image_file.end);
-	if(image_file.tellg() != IMAGE_SIZE)
+	if((unsigned int) image_file.tellg() != IMAGE_SIZE)
 	{
 		cerr << "Erreur: La taille de l'image specifiee est incorrecte" << endl;
 		return EXIT_FAILURE;
@@ -58,6 +57,3 @@ int main( int argc, char **argv)
 
 	return EXIT_SUCCESS;
 }
-
-
-*/
