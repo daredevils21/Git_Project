@@ -20,12 +20,16 @@ namespace {
 	const unsigned int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
 };
 
-struct pixel
-{
-	int r;
-	int g;
-	int b;
-};
+//struct pixel
+//{
+//	int r;
+//	int g;
+//	int b;
+//};
+
+int red[480][480];
+int green[480][480];
+int blue[480][480];
 
 int main( int argc, char **argv)
 {
@@ -81,18 +85,15 @@ int main( int argc, char **argv)
 	//cout << "Max=" << max << endl;
 	//cout << "Nb_max=" << nb_max << endl;
 
-	int pixels[480][480];
+	for (int i = 0; i < IMAGE_HEIGHT; i++) {
+		for (int j = 0; j < IMAGE_WIDTH; j++) {
+			index = i * IMAGE_WIDTH + j * 3;
+			red[i][j] = (int)image[index];
+			green[i][j] = (int)image[index + 1];
+			blue[i][j] = (int)image[index + 2];
+		}
+	}
 
-	//for (int i = 0; i < IMAGE_HEIGHT; i++) {
-	//	for (int j = 0; j < IMAGE_WIDTH; j++) {
-	//		index = i * IMAGE_WIDTH + j * 3;
-	//		pixels[i][j].r = (int)image[index];
-	//		pixels[i][j].g = (int)image[index + 1];
-	//		pixels[i][j].b = (int)image[index + 2];
-	//	}
-	//}
-
-
-	system("pause");
+	//system("pause");
 	return EXIT_SUCCESS;
 }
