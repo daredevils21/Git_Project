@@ -1,8 +1,0 @@
-﻿  Source.cpp
-  load_image.cpp
-  dummy_image_processing_plugin.cpp
-c:\users\marco\documents\universite de sherbrooke\s4\projet\git_project\code\reconnaissance\reconnaissance\dummy_image_processing_plugin.cpp(40): warning C4373: 'DummyImageProcessingPlugin::OnImage' : la fonction virtuelle se substitue à 'ImageProcessingPlugin::OnImage', les versions précédentes n'ont pas été substituées lorsque les paramètres ne différaient que par les qualificateurs const/volatile
-  c:\users\marco\documents\universite de sherbrooke\s4\projet\git_project\code\reconnaissance\reconnaissance\image_processing_plugin.h(40): note: voir la déclaration de 'ImageProcessingPlugin::OnImage'
-  Génération de code en cours...
-  Reconnaissance.vcxproj -> C:\Users\Marco\Documents\Universite de Sherbrooke\S4\Projet\Git_Project\Code\Reconnaissance\Debug\Reconnaissance.exe
-  Reconnaissance.vcxproj -> C:\Users\Marco\Documents\Universite de Sherbrooke\S4\Projet\Git_Project\Code\Reconnaissance\Debug\Reconnaissance.pdb (Partial PDB)

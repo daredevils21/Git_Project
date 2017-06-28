@@ -1,0 +1,15 @@
+# ignore an entire directory
+/Code/Reconnaissance/.vs
+/Code/Reconnaissance/x64
+/Code/Reconnaissance/Debug
+
+# ignore a file type
+*.suo
+*.db
+*.ipch
+*.exe
+*.ilk
+*.pdb
+
+# add an exception (using !) to the preceding rule to track a specific file
+#!package.json
