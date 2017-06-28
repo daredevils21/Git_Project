@@ -28,6 +28,9 @@ int main( int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	cout << "0 : " << argv[0] << endl;
+	cout << "1 : " << argv[1] << endl;
+
 	// Open image file
 	ifstream image_file(argv[1], ios::binary);
 	if(!image_file)
@@ -38,7 +41,11 @@ int main( int argc, char **argv)
 
 	// Check file size
 	image_file.seekg(0, image_file.end);
-	if((unsigned int) image_file.tellg() != IMAGE_SIZE)
+	unsigned int a = (unsigned int)image_file.tellg();
+
+	cout << a << endl;
+
+	if(a != IMAGE_SIZE)
 	{
 		cerr << "Erreur: La taille de l'image specifiee est incorrecte" << endl;
 		return EXIT_FAILURE;
