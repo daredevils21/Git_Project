@@ -1,2 +1,9 @@
+<<<<<<< HEAD
 ﻿  Reconnaissance.vcxproj -> C:\Users\Marco\Documents\Universite de Sherbrooke\S4\Projet\Git_Project\Code\Reconnaissance\x64\Debug\Reconnaissance.exe
   Reconnaissance.vcxproj -> C:\Users\Marco\Documents\Universite de Sherbrooke\S4\Projet\Git_Project\Code\Reconnaissance\x64\Debug\Reconnaissance.pdb (Partial PDB)
+=======
+﻿  Source.cpp
+  LINK : C:\Users\Utilisteur\Programmation\S4\Projet\Git_Project\Code\Reconnaissance\x64\Debug\Reconnaissance.exe introuvable ou non généré par la dernière édition de liens incrémentielle ; édition de liens complète en cours
+  Reconnaissance.vcxproj -> C:\Users\Utilisteur\Programmation\S4\Projet\Git_Project\Code\Reconnaissance\x64\Debug\Reconnaissance.exe
+  Reconnaissance.vcxproj -> C:\Users\Utilisteur\Programmation\S4\Projet\Git_Project\Code\Reconnaissance\x64\Debug\Reconnaissance.pdb (Partial PDB)
+>>>>>>> Reconnaissance
