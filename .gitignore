@@ -2,6 +2,8 @@
 /Code/Reconnaissance/.vs
 /Code/Reconnaissance/x64
 /Code/Reconnaissance/Debug
+/Code/Reconnaissance/Reconnaissance/Debug
+/Code/Reconnaissance/Reconnaissance/x64
 
 # ignore a file type
 *.suo
@@ -10,6 +12,11 @@
 *.exe
 *.ilk
 *.pdb
+*.obj
+*.log
+*.tlog
+*.idb
+*.lastbuildstate
 
 # add an exception (using !) to the preceding rule to track a specific file
 #!package.json
