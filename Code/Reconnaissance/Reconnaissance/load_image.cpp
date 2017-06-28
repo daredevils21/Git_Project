@@ -36,7 +36,7 @@ int main( int argc, char **argv)
 	if(!image_file)
 	{
 		cerr << "Erreur: Chemin de l'image invalide" << endl;
-		return EXIT_FAILURE;
+		return EXIT_FAILURE+1;
 	}
 
 	// Check file size
@@ -48,7 +48,7 @@ int main( int argc, char **argv)
 	if(a != IMAGE_SIZE)
 	{
 		cerr << "Erreur: La taille de l'image specifiee est incorrecte" << endl;
-		return EXIT_FAILURE;
+		return EXIT_FAILURE+2;
 	}
 	image_file.seekg(0, image_file.beg);
 
