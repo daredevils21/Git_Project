@@ -9,5 +9,5 @@ int main()
 	typedef std::istream_iterator<int> in;
 
 	std::for_each(
-		in(std::cin), in(), std::cout << (_1 * 3) << " ");
+		in(std::cin), in(), std::cout << (_1 * 5) << " ");
 }
