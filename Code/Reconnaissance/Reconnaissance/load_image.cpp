@@ -58,13 +58,13 @@ int main( int argc, char **argv)
 	image_file.read(reinterpret_cast<char *>(image.get()), IMAGE_SIZE);
 
 	// Aller chercher un pixel
-	image[(4 * IMAGE_WIDTH + 14) * 3 + BLUE];
+	//image[(4 * IMAGE_WIDTH + 14) * 3 + BLUE];
 
 	cropCircle(image);
 
 
 
-	FILE *imageFile;
+	//FILE *imageFile;
 
 	//imageFile = fopen("redPic.ppm", "wb");
 	//if (imageFile == NULL) {
@@ -76,10 +76,10 @@ int main( int argc, char **argv)
 	//fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
 	//fprintf(imageFile, "255\n"); // Max pixel
 
-	for (int i = 0; i < IMAGE_SIZE; i+=3) {
-		fprintf(imageFile, "%d %d %d\n", /*image[i + RED]*/ 0, /*bluePic[i + GREEN]*/ 0, image[i + BLUE]);
-	}
-	fclose(imageFile);
+	//for (int i = 0; i < IMAGE_SIZE; i+=3) {
+	//	fprintf(imageFile, "%d %d %d\n", /*image[i + RED]*/ 0, /*bluePic[i + GREEN]*/ 0, image[i + BLUE]);
+	//}
+	//fclose(imageFile);
 
 
 
