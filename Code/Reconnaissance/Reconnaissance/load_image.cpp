@@ -23,7 +23,10 @@ namespace {
 	const unsigned int BLUE = 2;
 };
 
-unsigned int bluePic[IMAGE_SIZE];
+void cropCircle(boost::shared_array<uint8_t> image)
+{
+
+}
 
 int main( int argc, char **argv)
 {
@@ -57,29 +60,21 @@ int main( int argc, char **argv)
 	// Aller chercher un pixel
 	image[(4 * IMAGE_WIDTH + 14) * 3 + BLUE];
 
+	cropCircle(image);
 
 
-	// Create blue image
-	for (int i = 0; i < IMAGE_SIZE; i+=3) {
-		bluePic[i + RED] = 0;
-		bluePic[i + GREEN] = 0;
-		bluePic[i + BLUE] = image[i + BLUE];
-	}
 
 	FILE *imageFile;
-	unsigned int red;
-	unsigned int green;
-	unsigned int blue;
 
-	imageFile = fopen("bluePic.ppm", "wb");
-	if (imageFile == NULL) {
-		perror("ERROR: Cannot open output file");
-		exit(EXIT_FAILURE);
-	}
+	//imageFile = fopen("redPic.ppm", "wb");
+	//if (imageFile == NULL) {
+	//	perror("ERROR: Cannot open output file");
+	//	exit(EXIT_FAILURE);
+	//}
 
-	fprintf(imageFile, "P3\n");               // P6 filetype
-	fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
-	fprintf(imageFile, "255\n");              // Max pixel
+	//fprintf(imageFile, "P3\n");
+	//fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
+	//fprintf(imageFile, "255\n"); // Max pixel
 
 	for (int i = 0; i < IMAGE_SIZE; i+=3) {
 		fprintf(imageFile, "%d %d %d\n", /*image[i + RED]*/ 0, /*bluePic[i + GREEN]*/ 0, image[i + BLUE]);
@@ -93,17 +88,6 @@ int main( int argc, char **argv)
 	// Les pixels sont sotckes en mode: row-major order.
 	// L'outil convert de imagemagick peut etre interessant pour convertir le format d'image si requis:
 	// convert -depth 8 -size 480x480 test.rgb test.png
-
-	int index = 0;
-
-	//for (int i = 0; i < IMAGE_HEIGHT; i++) {
-	//	for (int j = 0; j < IMAGE_WIDTH; j++) {
-	//		index = i * IMAGE_WIDTH + j * 3;
-	//		pixels[i][j].r = (int)image[index];
-	//		pixels[i][j].g = (int)image[index + 1];
-	//		pixels[i][j].b = (int)image[index + 2];
-	//	}
-	//}
 
 	//system("pause");
 	return EXIT_SUCCESS;
