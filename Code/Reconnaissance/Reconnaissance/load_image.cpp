@@ -23,14 +23,6 @@ namespace {
 	const unsigned int BLUE = 2;
 };
 
-//struct pixel
-//{
-//	int r;
-//	int g;
-//	int b;
-//};
-//
-//pixel pixels[IMAGE_HEIGHT][IMAGE_WIDTH];
 unsigned int bluePic[IMAGE_SIZE];
 
 int main( int argc, char **argv)
@@ -75,6 +67,9 @@ int main( int argc, char **argv)
 	}
 
 	FILE *imageFile;
+	unsigned int red;
+	unsigned int green;
+	unsigned int blue;
 
 	imageFile = fopen("bluePic.ppm", "wb");
 	if (imageFile == NULL) {
@@ -87,7 +82,7 @@ int main( int argc, char **argv)
 	fprintf(imageFile, "255\n");              // Max pixel
 
 	for (int i = 0; i < IMAGE_SIZE; i+=3) {
-		fprintf(imageFile, "%d %d %d\n", bluePic[i], bluePic[i + 1], bluePic[i + 2]);
+		fprintf(imageFile, "%d %d %d\n", /*image[i + RED]*/ 0, /*bluePic[i + GREEN]*/ 0, image[i + BLUE]);
 	}
 	fclose(imageFile);
 
