@@ -62,8 +62,6 @@ int main( int argc, char **argv)
 
 	cropCircle(image);
 
-
-
 	//FILE *imageFile;
 
 	//imageFile = fopen("redPic.ppm", "wb");
