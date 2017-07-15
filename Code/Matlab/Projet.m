@@ -3,12 +3,12 @@ close all
 clc
 format compact
 
-pathImage = 'C:\Users\Utilisteur\Programmation\S4\Projet\Git_Project\images\asservissement_actif\bmp\';
-pathBille = 'C:\Users\Utilisteur\Documents\MATLAB\S4Projet\';
+pathImage = '..\..\images\asservissement_actif\bmp\';
+pathBille = '..\..\images\';
 imageA = imread(strcat(pathImage,'image_0.bmp'));
-bille = imread(strcat(pathBille,'bille.bmp'));
+bille = imread(strcat(pathBille,'bille_verte.bmp'));
 
 imageAGreen = toGreen(imageA);
 billeGreen = toGreen(bille);
 
-% printGreenImage(greenImage);
+% printGreenImage(imageAGreen);
