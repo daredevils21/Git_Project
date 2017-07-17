@@ -1,3 +1,3 @@
-function [] = Correlation(bille, posCercleCorr, rayonCercleCorr)
-    
+function [posBille] = Correlation(image, bille, coinDroitImage)
+    posBille = 2;
 end

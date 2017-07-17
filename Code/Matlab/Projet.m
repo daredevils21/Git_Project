@@ -6,66 +6,87 @@ format compact
 %% Aller chercher les images en vertes
 pathImage = '..\..\images\asservissement_actif\bmp\';
 pathBille = '..\..\images\';
-imageA = imread(strcat(pathImage,'image_0.bmp'));
+
+%rï¿½cuperation des noms des images dans un tableau
+Dir = dir(pathImage); 
+Dir = Dir(~cell2mat({Dir(:).isdir}));
+liste = {Dir(:).name};
+
 bille = imread(strcat(pathBille,'bille_verte.bmp'));
 
-imageAGreen = toGreen(imageA);
 billeGreen = toGreen(bille);
+rayonBille = length(billeGreen)/2;
 
-% printGreenImage(imageAGreen);
+ %% Constantes
+ thetaMax = 15; % degrï¿½s
+ fHz = 30; % 30 photos par seconde
+ rayonPlaque = 62.5/1000; % m
+ diametrePlaque = 2*rayonPlaque;
+ mSphere = 8; % g
+ g = 9.81;
+ 
+ %% Calculs physiques pour dï¿½placement max
+ % Mï¿½canique
+ accel = g*sind(thetaMax)/mSphere;
+ tDiametrePlaque = sqrt(diametrePlaque*2/accel);
+ vMax = accel*tDiametrePlaque;
+ % ï¿½nergie
+ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 
-%% Trouver le cercle de la plaque (algo Mathieu)
+%% Boucle des diffï¿½rentes images
+for i=1:length(liste)
+    
+    imageA = imread(strcat(pathImage, liste(i)));
+    imageGreen = toGreen(imageA);
 
+    %printGreenImage(billeGreen);
 
-%valeurs de retour : 
-coteGauchePlaque = 40;
-coteDroitPlaque = 398;
+    %% Trouver le cercle de la plaque (algo Mathieu)
+    %valeurs de retour : 
+    coteGauchePlaque = 40;
+    coteDroitPlaque = 398;
+    coteHautPlaque = 73;
+    coteBasPlaque = 430;
+    
 
+    %% Calculs physiques pour dï¿½placement max
+    % On va peut-ï¿½tre avoir besoin des gars d'ï¿½lec pour la bonne vMax 
+    vMaxParFrame = vMax/fHz;
 
-%% Constantes
-thetaMax = 15; % degrés
-fHz = 30; % 30 photos par seconde
-rayonPlaque = 62.5/1000; % m
-diametrePlaque = 2*rayonPlaque;
-mSphere = 8; % kg
-g = 9.81;
+    diametrePlaquePixel = coteDroitPlaque-coteGauchePlaque;
+    centrePlaqueHorizontal = mean([coteGauchePlaque coteDroitPlaque]);
 
-%% Calculs physiques pour déplacement max
-% Mécanique
-accel = g*sind(thetaMax)/mSphere;
-tDiametrePlaque = sqrt(diametrePlaque*2/accel);
-vMax = accel*tDiametrePlaque;
-% Énergie
-v = sqrt(2*g*diametrePlaque*sind(thetaMax));
+    vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
 
-% On va peut-être avoir besoin des gars d'élec pour la bonne vMax 
-vMaxParFrame = vMax/fHz;
+    
+    %% Premiï¿½re partie
+    if i==1
+        % Premiï¿½re image : on fait une corrï¿½lation sur toute la grosseur de la
+        % plaque afin de trouver la balle
+        imageCorr = imageGreen(coteHautPlaque:coteBasPlaque,coteGauchePlaque:coteDroitPlaque);
+        position_bille = Correlation(imageCorr, billeGreen);
+        % printGreenImage(imageCorr);
 
+        % Sorties
+        position_bille = [round(mean([188 209])) round(mean([230 251]))]; %hardcodï¿½ pour l'instant
+        posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);
+    end
+    
+    %% Deuxiï¿½me partie
+    if((i==2)||(i==3))
+        % Deuxiï¿½me et troisiï¿½me image : On fait une corrï¿½lation de la balle avec un
+        % cercle centrï¿½ sur la balle et avec un rayon de vMax car on ne connaï¿½t pas
+        % sa vitesse
 
-diametrePlaquePixel = coteDroitPlaque-coteGauchePlaque;
-centrePlaqueHorizontal = mean([coteGauchePlaque coteDroitPlaque]);
-
-vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
-
-%% Première partie
-% Première image : on fait une corrélation sur toute la grosseur de la
-% plaque afin de trouver la balle
-
-
-% Sorties
-position_bille = [round(mean([188 209])) round(mean([230 251]))]; %hardcodé pour l'instant
-position_cercle_corr = trouverPosCercleCorr(position_bille, 0, 0);
-
-%% Deuxième partie
-% Deuxième et troisième image : On fait une corrélation de la balle avec un
-% cercle centré sur la balle et avec un rayon de vMax car on ne connaît pas
-% sa vitesse
-
-Correlation(billeGreen, position_cercle_corr,  vMax);
-
-%% Troisième partie
-% Quatrième image et plus : À ce point, on connait la vitesse et
-% l'orientation de la vitesse de la balle, on fait donc une corrélation de
-% la balle avec un cercle plus petit selon la vitesse courante de la balle
-% et on le place vers la direction où la balle s'enligne.
-
+        % devrait ï¿½tre la prochaine image (2e)
+        imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
+        printCarreCorr(imageGreen, posCarreCorr);
+    end
+    %% Troisiï¿½me partie
+    if i>=4
+        % Quatriï¿½me image et plus : ï¿½ ce point, on connait la vitesse et
+        % l'orientation de la vitesse de la balle, on fait donc une corrï¿½lation de
+        % la balle avec un cercle plus petit selon la vitesse courante de la balle
+        % et on le place vers la direction oï¿½ la balle s'enligne.
+    end
+end
