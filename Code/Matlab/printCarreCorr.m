@@ -16,5 +16,6 @@ function [] = printCarreCorr(greenImage, coords)
     newImage(coords(4), coords(1):coords(3), 2) = 0;
     
     newImage = newImage/256;
+    figure
     image(newImage);
 end
