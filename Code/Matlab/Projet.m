@@ -5,7 +5,8 @@ format compact
 
 %% Aller chercher les images en vertes
 % pathImage = '..\..\images\asservissement_actif\bmp\';
-pathImage = '..\..\images\\statique_zmin_version_1\bmp\';
+pathImage = '..\..\images\statique_zmin_version_1\bmp\';
+% pathImage = '..\..\images\vitesse_max_version_3\bmp\';
 pathBille = '..\..\images\';
 
 % recuperation des noms des images dans un tableau
@@ -62,11 +63,11 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         
         % Image a correler
         imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
-        printCarre(imageGreen, coordsPlaque);
+        printCarre(imageA, coordsPlaque);
         % Position de la bille et afficher
-        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque);
+        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque)
         carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
-        printCarre(imageGreen, carreBille)
+        printCarre(imageA, carreBille)
         
         % Sorties
         posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);
@@ -79,8 +80,8 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         % sa vitesse
 
         % Afficher le carre de corelation
-        imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
-        printCarre(imageGreen, posCarreCorr);
+%         imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
+%         printCarre(imageGreen, posCarreCorr);
 %     end
     %% Troisieme partie
 %     if i>=4

@@ -1,21 +1,26 @@
 % Fonction de tests seulement
-function [] = printCarre(greenImage, coords)
-    zeroArr = zeros(size(greenImage));
-    newImage(:,:,1) = zeroArr;
-    newImage(:,:,2) = greenImage;
-    newImage(:,:,3) = zeroArr;
+function [] = printCarre(imageA, coords)
+%     zeroArr = zeros(size(imageA));
+%     newImage(:,:,1) = zeroArr;
+%     newImage(:,:,2) = imageA;
+%     newImage(:,:,3) = zeroArr;
     
-    newImage(coords(2):coords(4), coords(1), 1) = 255;
-    newImage(coords(2):coords(4), coords(3), 1) = 255;
-    newImage(coords(2), coords(1):coords(3), 1) = 255;
-    newImage(coords(4), coords(1):coords(3), 1) = 255;
+    imageA(coords(2):coords(4), coords(1), 1) = 0;
+    imageA(coords(2):coords(4), coords(3), 1) = 0;
+    imageA(coords(2), coords(1):coords(3), 1) = 0;
+    imageA(coords(4), coords(1):coords(3), 1) = 0;
     
-    newImage(coords(2):coords(4), coords(1), 2) = 0;
-    newImage(coords(2):coords(4), coords(3), 2) = 0;
-    newImage(coords(2), coords(1):coords(3), 2) = 0;
-    newImage(coords(4), coords(1):coords(3), 2) = 0;
+    imageA(coords(2):coords(4), coords(1), 2) = 0;
+    imageA(coords(2):coords(4), coords(3), 2) = 0;
+    imageA(coords(2), coords(1):coords(3), 2) = 0;
+    imageA(coords(4), coords(1):coords(3), 2) = 0;
     
-    newImage = newImage/256;
+    imageA(coords(2):coords(4), coords(1), 3) = 255;
+    imageA(coords(2):coords(4), coords(3), 3) = 255;
+    imageA(coords(2), coords(1):coords(3), 3) = 255;
+    imageA(coords(4), coords(1):coords(3), 3) = 255;
+    
+%     imageA = imageA/256;
     figure
-    image(newImage);
+    image(imageA);
 end
