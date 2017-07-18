@@ -1,4 +1,4 @@
-function [Coords] = detection_plaque(greenImage)
+function [Coords, Centre, Rayon] = detection_plaque(greenImage)
 
     % Constantes
     [IMAGE_WIDTH,IMAGE_HEIGHT] = size(greenImage);
@@ -137,8 +137,10 @@ function [Coords] = detection_plaque(greenImage)
     center_X = (index_X(1) + index_X(2))/2;
     center_Y = (index_Y(1) + index_Y(2))/2;
 
-    diameter_X = index_X(2) - index_X(1);
-    diameter_Y = index_Y(2) - index_Y(1);
+    rayon_X = (index_X(2) - index_X(1))/2;
+    rayon_Y = (index_Y(2) - index_Y(1))/2;
     
     Coords = [index_X(1) index_Y(1) index_X(2) index_Y(2)];
+    Centre = [center_X center_Y];
+    Rayon = (rayon_X + rayon_Y) / 2;
 end

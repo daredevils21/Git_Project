@@ -44,14 +44,13 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 
     %% Trouver le cercle de la plaque
     
-    coordsPlaque = detection_plaque(imageGreen)
+    [coordsPlaque, centrePlaque, rayonPlaque] = detection_plaque(imageGreen);
     
     %% Calculs physiques pour deplacement max
     % On va peut-etre avoir besoin des gars d'elec pour la bonne vMax 
     vMaxParFrame = vMax/fHz;
 
     diametrePlaquePixel = coordsPlaque(3)-coordsPlaque(1);
-    centrePlaqueHorizontal = mean([coordsPlaque(1) coordsPlaque(3)]);
 
     vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
 
@@ -65,7 +64,7 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
         printCarre(imageGreen, coordsPlaque);
         % Position de la bille et afficher
-        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)])        % printGreenImage(imageCorr);
+        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque);
         carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
         printCarre(imageGreen, carreBille)
         
