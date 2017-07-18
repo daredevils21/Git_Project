@@ -5,7 +5,7 @@ format compact
 
 %% Aller chercher les images en vertes
 % pathImage = '..\..\images\asservissement_actif\bmp\';
-pathImage = '..\..\images\\statique_zmax_version 1\bmp\';
+pathImage = '..\..\images\\statique_zmax_version_1\bmp\';
 pathBille = '..\..\images\';
 
 % recuperation des noms des images dans un tableau
