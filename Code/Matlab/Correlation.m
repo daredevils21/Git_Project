@@ -13,7 +13,7 @@ function [posBille] = Correlation(image, bille, rayonBille, coinHautGaucheImage,
     while distanceCentreBille >= rayonPlaque 
         % Trouver l'indice de la bille dans l'image courante reduite
         ind = find(corr==(max(max(corr))));
-        [x y] = ind2sub(size(corr),ind);
+        [x,y] = ind2sub(size(corr),ind);
 
 
         % On trouve la position de la bille dans l'image originelle.
