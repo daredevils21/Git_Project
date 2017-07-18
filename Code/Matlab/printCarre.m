@@ -1,5 +1,5 @@
 % Fonction de tests seulement
-function [] = printCarreCorr(greenImage, coords)
+function [] = printCarre(greenImage, coords)
     zeroArr = zeros(size(greenImage));
     newImage(:,:,1) = zeroArr;
     newImage(:,:,2) = greenImage;

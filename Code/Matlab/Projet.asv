@@ -42,16 +42,23 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 
     %printGreenImage(billeGreen);
 
-    %% Trouver le cercle de la plaque
+    %% Trouver le cercle de la plaque (algo Mathieu)
+    % valeurs de retour : 
     
-    coordsPlaque = detection_plaque(imageGreen)
     
+    coteGauchePlaque = 40;
+    coteDroitPlaque = 398;
+    coteHautPlaque = 73;
+    coteBasPlaque = 431;
+    coordsPlaque = detection_plaque
+    
+
     %% Calculs physiques pour deplacement max
     % On va peut-etre avoir besoin des gars d'elec pour la bonne vMax 
     vMaxParFrame = vMax/fHz;
 
-    diametrePlaquePixel = coordsPlaque(3)-coordsPlaque(1);
-    centrePlaqueHorizontal = mean([coordsPlaque(1) coordsPlaque(3)]);
+    diametrePlaquePixel = coteDroitPlaque-coteGauchePlaque;
+    centrePlaqueHorizontal = mean([coteGauchePlaque coteDroitPlaque]);
 
     vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
 
@@ -60,16 +67,13 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 %     if i==1
         % Premiere image : on fait une correlation sur toute la grosseur de la
         % plaque afin de trouver la balle
-        
-        % Image a correler
-        imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
-        printCarre(imageGreen, coordsPlaque);
-        % Position de la bille et afficher
-        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)])        % printGreenImage(imageCorr);
+        imageCorr = imageGreen(coteHautPlaque:coteBasPlaque,coteGauchePlaque:coteDroitPlaque);
+        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coteGauchePlaque, coteHautPlaque])        % printGreenImage(imageCorr);
+        printCarre(imageGreen, [coteGauchePlaque, coteHautPlaque, coteDroitPlaque, coteBasPlaque]);
         carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
         printCarre(imageGreen, carreBille)
-        
         % Sorties
+%         position_bille = [round(mean([188 209])) round(mean([230 251]))]; %hardcode pour l'instant
         posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);
 %     end
     
@@ -79,7 +83,7 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         % cercle centre sur la balle et avec un rayon de vMax car on ne connaet pas
         % sa vitesse
 
-        % Afficher le carre de corelation
+        % devrait etre la prochaine image (2e)
         imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
         printCarre(imageGreen, posCarreCorr);
 %     end
