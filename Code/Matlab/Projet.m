@@ -4,14 +4,23 @@ clc
 format compact
 
 %% Aller chercher les images en vertes
-% pathImage = '..\..\images\asservissement_actif\bmp\';
-pathImage = '..\..\images\\statique_zmin_version_1\bmp\';
+% recuperation des noms des dossiers images dans un tableau
 pathBille = '..\..\images\';
+Dir = dir(pathBille); 
+Dir = Dir(cell2mat({Dir(:).isdir}));
+dossier = {Dir(:).name};
+for i=1:(length(dossier)-2)
+    dossier(i) = dossier(i+2);
+end
+dossier(13:14) = [];
+
 
 % recuperation des noms des images dans un tableau
-Dir = dir(pathImage); 
-Dir = Dir(~cell2mat({Dir(:).isdir}));
-liste = {Dir(:).name};
+% pathImage = '..\..\images\asservissement_actif\bmp\';
+pathImage = strcat('..\..\images\',char(dossier(7)),'\bmp\');
+dir = dir(pathImage); 
+dir = dir(~cell2mat({dir(:).isdir}));
+liste = {dir(:).name};
 
 bille = imread(strcat(pathBille,'bille_verte.bmp'));
 
