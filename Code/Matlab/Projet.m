@@ -5,6 +5,8 @@ format compact
 
 %% Aller chercher les images en vertes
 % recuperation des noms des dossiers images dans un tableau
+num_folder = 2;
+num_image = 5; 
 pathBille = '..\..\images\';
 Dir = dir(pathBille); 
 Dir = Dir(cell2mat({Dir(:).isdir}));
@@ -17,7 +19,7 @@ dossier(13:14) = [];
 
 % recuperation des noms des images dans un tableau
 % pathImage = '..\..\images\asservissement_actif\bmp\';
-pathImage = strcat('..\..\images\',char(dossier(7)),'\bmp\');
+pathImage = strcat('..\..\images\',char(dossier(num_folder)),'\bmp\');
 dir = dir(pathImage); 
 dir = dir(~cell2mat({dir(:).isdir}));
 liste = {dir(:).name};
@@ -46,7 +48,7 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 %% Boucle des differentes images
 % for i=1:length(liste)
     
-    imageA = imread(strcat(pathImage, char(liste(4))));
+    imageA = imread(strcat(pathImage, char(liste(num_image))));
     imageGreen = toGreen(imageA);
 
     %printGreenImage(billeGreen);
