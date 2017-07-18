@@ -14,7 +14,7 @@ Dir = dir(pathImage);
 Dir = Dir(~cell2mat({Dir(:).isdir}));
 liste = {Dir(:).name};
 
-bille = imread(strcat(pathBille,'bille_verte.bmp'));
+bille = imread(strcat(pathBille,'bille_verte2.bmp'));
 
 billeGreen = toGreen(bille);
 rayonBille = length(billeGreen)/2;
@@ -38,7 +38,7 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 %% Boucle des differentes images
 % for i=1:length(liste)
     
-    imageA = imread(strcat(pathImage, char(liste(14))));
+    imageA = imread(strcat(pathImage, char(liste(4))));
     imageGreen = toGreen(imageA);
 
     %printGreenImage(billeGreen);
