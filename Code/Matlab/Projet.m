@@ -22,7 +22,7 @@ dir = dir(pathImage);
 dir = dir(~cell2mat({dir(:).isdir}));
 liste = {dir(:).name};
 
-bille = imread(strcat(pathBille,'bille_verte.bmp'));
+bille = imread(strcat(pathBille,'bille_verte2.bmp'));
 
 billeGreen = toGreen(bille);
 rayonBille = length(billeGreen)/2;
@@ -46,21 +46,20 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 %% Boucle des differentes images
 % for i=1:length(liste)
     
-    imageA = imread(strcat(pathImage, char(liste(14))));
+    imageA = imread(strcat(pathImage, char(liste(4))));
     imageGreen = toGreen(imageA);
 
     %printGreenImage(billeGreen);
 
     %% Trouver le cercle de la plaque
     
-    coordsPlaque = detection_plaque(imageGreen)
+    [coordsPlaque, centrePlaque, rayonPlaque] = detection_plaque(imageGreen);
     
     %% Calculs physiques pour deplacement max
     % On va peut-etre avoir besoin des gars d'elec pour la bonne vMax 
     vMaxParFrame = vMax/fHz;
 
     diametrePlaquePixel = coordsPlaque(3)-coordsPlaque(1);
-    centrePlaqueHorizontal = mean([coordsPlaque(1) coordsPlaque(3)]);
 
     vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
 
@@ -72,11 +71,11 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         
         % Image a correler
         imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
-        printCarre(imageGreen, coordsPlaque);
+        printCarre(imageA, coordsPlaque);
         % Position de la bille et afficher
-        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)])        % printGreenImage(imageCorr);
+        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque)
         carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
-        printCarre(imageGreen, carreBille)
+        printCarre(imageA, carreBille)
         
         % Sorties
         posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);
@@ -89,8 +88,8 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         % sa vitesse
 
         % Afficher le carre de corelation
-        imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
-        printCarre(imageGreen, posCarreCorr);
+%         imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
+%         printCarre(imageGreen, posCarreCorr);
 %     end
     %% Troisieme partie
 %     if i>=4
