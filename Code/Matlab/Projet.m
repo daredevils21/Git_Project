@@ -5,8 +5,9 @@ format compact
 
 %% Aller chercher les images en vertes
 % recuperation des noms des dossiers images dans un tableau
-num_folder = 2;
-num_image = 5; 
+num_folder = 7;
+num_image = 1; 
+
 pathBille = '..\..\images\';
 Dir = dir(pathBille); 
 Dir = Dir(cell2mat({Dir(:).isdir}));

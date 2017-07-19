@@ -23,7 +23,7 @@ function [posBille] = Correlation(image, bille, rayonBille, coinHautGaucheImage,
         posBille(2) = round(x + coinHautGaucheImage(2) - rayonBille);
 
         % Distance entre la bille et le centre de la plaque
-        distanceCentreBille = sqrt((posBille(1)-centrePlaque(1))^2 + (posBille(2)-centrePlaque(2))^2)
+        distanceCentreBille = sqrt((posBille(1)-centrePlaque(1))^2 + (posBille(2)-centrePlaque(2))^2);
         if distanceCentreBille > rayonPlaque
             corr(x,y) = 0;
         end
