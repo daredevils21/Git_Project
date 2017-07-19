@@ -74,11 +74,11 @@ v = sqrt(2*g*diametrePlaque*sind(thetaMax));
         
         % Image a correler
         imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
-        printCarre(imageA, coordsPlaque);
+        printCarre(imageA, coordsPlaque, 'Position de la plaque');
         % Position de la bille et afficher
         position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque)
         carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
-        printCarre(imageA, carreBille)
+        printCarre(imageA, carreBille, 'Position de la bille')
         
         % Sorties
         posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);

@@ -6,6 +6,7 @@ function [posBille] = Correlation(image, bille, rayonBille, coinHautGaucheImage,
     % Afficher la correlation
     figure
     mesh(corr);
+    title('Corrélation de la bille dans le rectangle à correler')
 
     % Do-while pour aller chercher le maximum sur la plaque (et non sur
     % le contour)

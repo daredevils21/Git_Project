@@ -1,5 +1,5 @@
 % Fonction de tests seulement
-function [] = printCarre(imageA, coords)
+function [] = printCarre(imageA, coords, titre)
 %     zeroArr = zeros(size(imageA));
 %     newImage(:,:,1) = zeroArr;
 %     newImage(:,:,2) = imageA;
@@ -23,4 +23,5 @@ function [] = printCarre(imageA, coords)
 %     imageA = imageA/256;
     figure
     image(imageA);
+    title(titre)
 end
