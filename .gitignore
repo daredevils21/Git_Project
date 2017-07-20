@@ -1,0 +1,20 @@
+# ignore an entire directory
+/Code/Reconnaissance/.vs
+/Code/Reconnaissance/x64
+/Code/Reconnaissance/Debug
+/Code/Reconnaissance/Reconnaissance/Debug
+/Code/Reconnaissance/Reconnaissance/x64
+
+# ignore a file type
+*.suo
+*.db
+*.ipch
+*.exe
+*.ilk
+*.pdb
+*.obj
+*.log
+*.tlog
+*.idb
+*.lastbuildstate
+*.asv
