@@ -5,8 +5,7 @@ format compact
 
 %% Aller chercher les images en vertes
 % recuperation des noms des dossiers images dans un tableau
-num_folder = 7;
-num_image = 1; 
+num_folder = 10;
 
 pathBille = '..\..\images\';
 Dir = dir(pathBille); 
@@ -17,14 +16,12 @@ for i=1:(length(dossier)-2)
 end
 dossier(13:14) = [];
 
-
 % recuperation des noms des images dans un tableau
-% pathImage = '..\..\images\asservissement_actif\bmp\';
 pathImage = strcat('..\..\images\',char(dossier(num_folder)),'\bmp\');
 dir = dir(pathImage); 
 dir = dir(~cell2mat({dir(:).isdir}));
 liste = {dir(:).name};
-
+liste = sort_nat(liste);
 bille = imread(strcat(pathBille,'bille_verte2.bmp'));
 
 billeGreen = toGreen(bille);
@@ -43,62 +40,55 @@ g = 9.81;
 accel = g*sind(thetaMax)/mSphere;
 tDiametrePlaque = sqrt(diametrePlaque*2/accel);
 vMax = accel*tDiametrePlaque;
+vMaxParFrame = vMax/fHz;
 % energie
 v = sqrt(2*g*diametrePlaque*sind(thetaMax));
 
 %% Boucle des differentes images
-% for i=1:length(liste)
+for i=1:length(liste)
     
-    imageA = imread(strcat(pathImage, char(liste(num_image))));
+    imageA = imread(strcat(pathImage, char(liste(i))));
     imageGreen = toGreen(imageA);
-
-    %printGreenImage(billeGreen);
-
-    %% Trouver le cercle de la plaque
-    
-    [coordsPlaque, centrePlaque, rayonPlaque] = detection_plaque(imageGreen);
-    
-    %% Calculs physiques pour deplacement max
-    % On va peut-etre avoir besoin des gars d'elec pour la bonne vMax 
-    vMaxParFrame = vMax/fHz;
-
-    diametrePlaquePixel = coordsPlaque(3)-coordsPlaque(1);
-
-    vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
-
     
     %% Premiere partie
-%     if i==1
+    if i==1
         % Premiere image : on fait une correlation sur toute la grosseur de la
         % plaque afin de trouver la balle
         
+        %% Trouver le cercle de la plaque
+        [coordsPlaque, centrePlaque, rayonPlaque] = detection_plaque(imageGreen);
+        diametrePlaquePixel = coordsPlaque(3)-coordsPlaque(1);
+        vPixMaxParFrame = vMaxParFrame*diametrePlaquePixel/diametrePlaque;
+        
         % Image a correler
-        imageCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
-        printCarre(imageA, coordsPlaque, 'Position de la plaque');
+        carreCorr = imageGreen(coordsPlaque(2):coordsPlaque(4),coordsPlaque(1):coordsPlaque(3));
+        
         % Position de la bille et afficher
-        position_bille = Correlation(imageCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque)
-        carreBille = trouverPosCercleCorr(position_bille, rayonBille, 0,0);
-        printCarre(imageA, carreBille, 'Position de la bille')
+        position_bille = Correlation(carreCorr, billeGreen, rayonBille, [coordsPlaque(1), coordsPlaque(2)], centrePlaque, rayonPlaque)
         
         % Sorties
-        posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 30, -pi/4);
-%     end
-    
-    %% Deuxieme partie
-%     if((i==2)||(i==3))
-        % Deuxieme et troisieme image : On fait une correlation de la balle avec un
-        % cercle centre sur la balle et avec un rayon de vMax car on ne connaet pas
-        % sa vitesse
-
-        % Afficher le carre de corelation
-%         imageCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
-%         printCarre(imageGreen, posCarreCorr);
-%     end
-    %% Troisieme partie
-%     if i>=4
-        % Quatrieme image et plus : e ce point, on connait la vitesse et
+        posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 0, 0, vPixMaxParFrame);
+%         printCarre(imageA, [1,1,480,480], 'Position de la bille')
+    else
+        % A ce point, on connait la vitesse et
         % l'orientation de la vitesse de la balle, on fait donc une correlation de
         % la balle avec un cercle plus petit selon la vitesse courante de la balle
-        % et on le place vers la direction oe la balle s'enligne.
-%     end
-% end
+        % et on le place vers la direction ou la balle s'enligne.
+        carreCorr = imageGreen(posCarreCorr(2):posCarreCorr(4),posCarreCorr(1):posCarreCorr(3));
+
+        
+        vieille_pos = position_bille;
+        position_bille = Correlation(carreCorr, billeGreen, rayonBille, [posCarreCorr(1), posCarreCorr(2)], centrePlaque, rayonPlaque)
+        [vPix(i), angle_vitesse(i)] = trouverVecteurVitesse(vieille_pos, position_bille);
+        vit(i) = vPix(i)*diametrePlaque/diametrePlaquePixel;
+        
+        % Affichage
+%         carreBille = [round(position_bille(1)- rayonBille), ...
+%                      round(position_bille(2) - rayonBille), ...
+%                      round(position_bille(1) + rayonBille), ...
+%                      round(position_bille(2) + rayonBille)];
+%         printCarre(imageA, posCarreCorr, [char(liste(i)), string(angle_vitesse(i))], carreBille)
+        
+        posCarreCorr = trouverPosCercleCorr(position_bille, rayonBille, 0, angle_vitesse(i), vPixMaxParFrame);
+    end
+end
