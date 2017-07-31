@@ -10,6 +10,7 @@ function [Coords, Centre, Rayon] = detection_plaque(greenImage)
     THIRD_IMAGE_HEIGHT = IMAGE_HEIGHT/3;
 
     MAX_SCALE = 0.5;
+    DIAMETER_TOLERENCE = 1.05;
 
     % Variables
     max = [ 0 0 ];
@@ -133,14 +134,30 @@ function [Coords, Centre, Rayon] = detection_plaque(greenImage)
             end
         end
     end
-
+    
+    diametre_X = index_X(2) - index_X(1);
+    diametre_Y = index_Y(2) - index_Y(1);
+    
+    if diametre_X > diametre_Y * DIAMETER_TOLERENCE
+        if intensity_Y(1) > intensity_Y(2)
+            index_Y(1) = index_Y(2) - diametre_X;
+        else
+            index_Y(2) = index_Y(1) + diametre_X;
+        end
+        diametre_Y = diametre_X;
+    elseif diametre_Y > diametre_X * DIAMETER_TOLERENCE
+        if intensity_X(1) > intensity_X(2)
+            index_X(1) = index_X(2) - diametre_Y;
+        else
+            index_X(2) = index_X(1) + diametre_Y;
+        end
+        diametre_X = diametre_Y; 
+    end
+    
     center_X = (index_X(1) + index_X(2))/2;
     center_Y = (index_Y(1) + index_Y(2))/2;
-
-    rayon_X = (index_X(2) - index_X(1))/2;
-    rayon_Y = (index_Y(2) - index_Y(1))/2;
     
     Coords = [index_X(1) index_Y(1) index_X(2) index_Y(2)];
     Centre = [center_X center_Y];
-    Rayon = (rayon_X + rayon_Y) / 2;
+    Rayon = (diametre_X + diametre_Y) / 4;
 end
