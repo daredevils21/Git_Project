@@ -9,25 +9,28 @@ image = imread(strcat(pathImage,'image_1253.bmp'));
 bille = imread(strcat(pathBille,'bille_verte.bmp'));
 
 % Calcul des limites physiques
-[center, rayon] = detection_plaque(image);
+[coord, center, rayon] = detection_plaque(image);
 
+theta = 15;
+fHz = 30;
 rayon_plaque_reel = 0.0625;
-p_per_m = rayon /rayon_plaque_reel;
-accel = 5/7 * 9.81 * sind(5);
-p_accel = accel * p_per_m;
 
-v_max = accel * sqrt((rayon*2)/(0.5*p_accel)) * p_per_m;
+accel = 5/7 * 9.81 * sind(theta);
+t = sqrt((rayon_plaque_reel*2)/accel)
+
+p_per_m = rayon / rayon_plaque_reel;
+p_accel = accel * p_per_m;
+p_v_max = p_accel * t;
+v_max = accel * t;
+dx_max_per_frame = p_v_max / fHz; 
 
 % Début de calcul dynamique
 
-x = 0;
-vx = 0;
-dt = 1/30;
+pos_balle = [ 100 100 ];
+rayon_bille = 12;
+vx = p_v_max;
+vy = p_v_max;
 
-for t = 0 : 300
-    x = x + vx * dt + 0.5 * p_accel * dt^2;
-    if x > rayon*2
-        break
-    end
-    vx = vx + p_accel * dt;
-end
+dt = 1/fHz;
+
+delta_x_max = p_v_max * dt + 0.5 * p_accel * dt^2;

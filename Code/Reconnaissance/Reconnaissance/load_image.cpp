@@ -12,20 +12,18 @@
 #include <fstream>
 
 using namespace std;
-
-namespace {
-
-	const unsigned int IMAGE_WIDTH = 480;
-	const unsigned int IMAGE_HEIGHT = 480;
-	const unsigned int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
-	const unsigned int RED = 0;
-	const unsigned int GREEN = 1;
-	const unsigned int BLUE = 2;
-};
-
-void cropCircle(boost::shared_array<uint8_t> image)
+/*
+template <typename Txt, typename Val>
+void disp(Txt txt, Val val)
 {
+	cout << txt << " = " << val << endl;
+}
 
+template <typename Txt, typename Val, typename... Args>
+void disp(Txt txt, Val val, Args... args)
+{
+	cout << txt << " = " << val << " :: ";
+	disp(args...);
 }
 
 int main( int argc, char **argv)
@@ -57,27 +55,43 @@ int main( int argc, char **argv)
 	boost::shared_array<uint8_t> image(new uint8_t[IMAGE_SIZE]);
 	image_file.read(reinterpret_cast<char *>(image.get()), IMAGE_SIZE);
 
-	// Aller chercher un pixel
-	//image[(4 * IMAGE_WIDTH + 14) * 3 + BLUE];
+	DummyImageProcessingPlugin dipp;
 
-	cropCircle(image);
+	Coords coordsPlaque;
+	Point<int> center;
 
-	//FILE *imageFile;
+	dipp.detectionPlaque(image, coordsPlaque, center);
 
-	//imageFile = fopen("redPic.ppm", "wb");
-	//if (imageFile == NULL) {
-	//	perror("ERROR: Cannot open output file");
-	//	exit(EXIT_FAILURE);
-	//}
+	int rayonPlaque = (coordsPlaque.x_right - coordsPlaque.x_left + coordsPlaque.y_bottom - coordsPlaque.y_top) / 4;
+	int pixPerM = rayonPlaque / RAYON_PLAQUE_M;
 
-	//fprintf(imageFile, "P3\n");
-	//fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
-	//fprintf(imageFile, "255\n"); // Max pixel
+	Coords cercleCorr;
+	
+	dipp.trouverPosCercleCorr(Point<int>(100, 100), Point<double>(0.1, 100), pixPerM, cercleCorr);
 
-	//for (int i = 0; i < IMAGE_SIZE; i+=3) {
-	//	fprintf(imageFile, "%d %d %d\n", /*image[i + RED]*/ 0, /*bluePic[i + GREEN]*/ 0, image[i + BLUE]);
-	//}
-	//fclose(imageFile);
+	disp("pixPerM", pixPerM);
+	disp("xl", cercleCorr.x_left, "xr", cercleCorr.x_right);
+
+	
+
+	dipp.inverseImage(image, Coords(113, 187, 113, 187));
+
+	FILE *imageFile;
+
+	imageFile = fopen("transformedIM.ppm", "wb");
+	if (imageFile == NULL) {
+		perror("ERROR: Cannot open output file");
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(imageFile, "P3\n");
+	fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
+	fprintf(imageFile, "255\n"); // Max pixel
+
+	for (int i = 0; i < IMAGE_SIZE; i+=3) {
+		fprintf(imageFile, "%d %d %d\n", image[i], image[i + GREEN], image[i + 2]);
+	}
+	fclose(imageFile);
 
 
 
@@ -89,4 +103,4 @@ int main( int argc, char **argv)
 
 	//system("pause");
 	return EXIT_SUCCESS;
-}
+}*/

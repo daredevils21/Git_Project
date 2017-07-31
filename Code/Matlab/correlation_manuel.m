@@ -4,8 +4,10 @@ close all
 
 GREEN = 2;
 
-image = imread('C:\Users\mat_8\Desktop\S4\Projet\git\detection\images\vitesse_max_version 3\bmp\image_1253.bmp');
+image = imread('C:\Users\mat_8\Desktop\S4\Projet\git\detection\images\vitesse_max_version_3\bmp\image_1253.bmp');
 bille = imread('C:\Users\mat_8\Desktop\S4\Projet\git\detection\images\bille_verte.bmp');
+
+bille = 255 - bille; 
 
 [center, rayon] = detection_plaque(image);
 
