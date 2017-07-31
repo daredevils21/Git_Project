@@ -14,39 +14,41 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 using namespace std;
 
 namespace
 {
-	const unsigned int IMAGE_WIDTH = 480;
-	const unsigned int IMAGE_HEIGHT = 480;
+	const int IMAGE_WIDTH = 480;
+	const int IMAGE_HEIGHT = 480;
 
-	const unsigned int IMAGE_WIDTH_X3 = IMAGE_WIDTH * 3;
-	const unsigned int IMAGE_HEIGHT_X3 = IMAGE_HEIGHT * 3;
+	const int IMAGE_WIDTH_X3 = IMAGE_WIDTH * 3;
+	const int IMAGE_HEIGHT_X3 = IMAGE_HEIGHT * 3;
 
-	const unsigned int HALF_IMAGE_WIDTH = IMAGE_WIDTH / 2;
-	const unsigned int HALF_IMAGE_HEIGHT = IMAGE_HEIGHT / 2;
+	const int HALF_IMAGE_WIDTH = IMAGE_WIDTH / 2;
+	const int HALF_IMAGE_HEIGHT = IMAGE_HEIGHT / 2;
 
-	const unsigned int THIRD_IMAGE_WIDTH = IMAGE_WIDTH / 3;
-	const unsigned int THIRD_IMAGE_HEIGHT = IMAGE_HEIGHT / 3;
+	const int THIRD_IMAGE_WIDTH = IMAGE_WIDTH / 3;
+	const int THIRD_IMAGE_HEIGHT = IMAGE_HEIGHT / 3;
 
-	const unsigned int TWO_THIRD_IMAGE_WIDTH = 2 * THIRD_IMAGE_WIDTH;
-	const unsigned int TWO_THIRD_IMAGE_HEIGHT = 2 * THIRD_IMAGE_HEIGHT;
+	const int TWO_THIRD_IMAGE_WIDTH = 2 * THIRD_IMAGE_WIDTH;
+	const int TWO_THIRD_IMAGE_HEIGHT = 2 * THIRD_IMAGE_HEIGHT;
 
-	const unsigned int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
-	const unsigned int GREEN = 1;
+	const int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
+	const int GREEN = 1;
 
 	const double MAX_SCALE = 0.5;
 	const double DIAMETER_TOLERENCE = 1.05;
+	const int FAST_CORR_COEF = 5;
 
-	const unsigned int THETA = 15;
-	const unsigned int FHZ = 30;
+	const int THETA = 15;
+	const int FHZ = 30;
 
 	const double RAYON_PLAQUE_M = 0.0625;
 
 	const int BILLE_WIDTH = 27;
 	const int BILLE_HEIGHT = 27;
-	const int IMAGE_BALLE_VERTE_INVERSE[] = {
+	const int IMAGE_BILLE_VERTE_INVERSE[] = {
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 6 , 1 ,15 , 1 ,14 , 1 , 3 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 ,10 , 6 ,28 ,15 ,27 ,14 , 4 , 3 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 ,
@@ -153,25 +155,41 @@ public:
 
 	void detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Coords& out_coords, Point<int>& out_center);
 
-	void trouverPosBille(const boost::shared_array<uint8_t> in_ptrImage, Coords& in_cercleCorr, Point<int>& out_positionBalle);
+	void trouverPosBille(const boost::shared_array<uint8_t> in_ptrImage,
+		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
+		int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle);
 
-	void inverseImage(boost::shared_array<uint8_t> in_ptrImage, Coords& in_cercleCorr);
+	void correlation(const boost::shared_array<uint8_t> in_ptrImage, const int in_imageBille[],
+		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
+		int in_rayon, const Coords& in_cercleCorr, Point<int>& out_positionBalle);
 
-	void trouverPosCercleCorr(Point<int>& in_positionBalle, int in_pixPerM, Coords& out_coords);
+	void inverseImage(boost::shared_array<uint8_t> in_ptrImage,
+		const Point<int>& in_imageSize, const Coords& in_cercleCorr);
 
-	void trouverPosCercleCorr(Point<int>& in_positionBalle, Point<double>& in_vitesse, 
-			int in_pixPerM, Coords& out_coords);
+	void decimation(boost::shared_array<uint8_t> in_ptrImage, const Point<int>& in_imageSize,
+		const Coords& in_cercleCorr, int in_n, boost::shared_array<uint8_t> out_ptrImage);
+
+	void trouverPosCercleCorr(const Point<int>& in_positionBalle, Coords& out_coords);
+
+	void trouverPosCercleCorr(const Point<int>& in_positionBalle, const Point<double>& in_vitesse, 
+		const Point<int>& in_centrePlaque, int in_rayon, Coords& out_coords);
 
 private:
 
+	Coords prochaineCorr;
+	Point<int> lastPos;
+	Point<double> lastVitesse;
 	double accelerationMSec;
 	double vitesseMaxMSec;
 	double pixPerM;
+	bool isPosKnown;
+	bool isCollision;
 };
 
 DummyImageProcessingPlugin::DummyImageProcessingPlugin()
+	: isPosKnown(false), isCollision(false)
 {
-	accelerationMSec = 5 / 7 * 9.81 * sin(THETA);
+	accelerationMSec = 5.0 / 7.0 * 9.81 * sin(THETA);
 	double t = sqrt((RAYON_PLAQUE_M * 2) / accelerationMSec);
 	vitesseMaxMSec = accelerationMSec * t;
 }
@@ -185,20 +203,62 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 		unsigned int in_unHeight, double & out_dXPos, double & out_dYPos)
 {
 	Coords coordsPlaque;
-	Point<int> center;
+	Point<int> centrePlaque;
+	Point<int> posBille;
 
-	detectionPlaque(in_ptrImage, coordsPlaque, center);
+	const int halfBille = BILLE_WIDTH / 2;
+
+	detectionPlaque(in_ptrImage, coordsPlaque, centrePlaque);
 
 	int rayonPlaque = (coordsPlaque.x_right - coordsPlaque.x_left + coordsPlaque.y_bottom - coordsPlaque.y_top) / 4;
 	pixPerM = rayonPlaque / RAYON_PLAQUE_M;
 
-	out_dXPos = -1.0;
-	out_dYPos = -1.0;
+	if (isPosKnown)
+	{
+		trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+			centrePlaque, rayonPlaque, prochaineCorr, posBille);
+		if (isCollision)
+		{
+			trouverPosCercleCorr(posBille, prochaineCorr);
+			isCollision = false;
+		}
+		else
+		{
+			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
+			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
+			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
+		}
+	}
+	else
+	{
+		Coords rectCorr(coordsPlaque.x_left - halfBille,
+			coordsPlaque.x_right + halfBille,
+			coordsPlaque.y_top - halfBille,
+			coordsPlaque.y_bottom + halfBille);
+
+		trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+			centrePlaque, rayonPlaque, coordsPlaque, posBille);
+		trouverPosCercleCorr(posBille, prochaineCorr);
+		isPosKnown = true;
+	}
+	lastPos = posBille;
+
+	out_dXPos = posBille.x;
+	out_dYPos = posBille.y;
 }
 
 void DummyImageProcessingPlugin::OnBallPosition(double in_dXPos, double in_dYPos, double & out_dXDiff, double & out_dYDiff)
 {
-	//insérez votre code ici
+	if (isPosKnown)
+	{
+
+	}
+	else
+	{
+		lastPos.x = in_dXPos;
+		lastPos.y = in_dYPos;
+	}
+
 	out_dXDiff = 0.0;
 	out_dYDiff = 0.0;
 }
@@ -211,8 +271,7 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 	double intensity_X[] = { 0 , 0 };
 	double intensity_Y[] = { 0 , 0 };
 
-	int gx = 0;
-	int gy = 0;
+	int gx = 0, gy = 0;
 	double g = 0;
 	int efficient_index_minus = 0;
 	int efficient_index_plus = 0;
@@ -426,52 +485,77 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 	out_coords.y_bottom = index_Y[1];
 }
 
-void DummyImageProcessingPlugin::trouverPosBille(const boost::shared_array<uint8_t> in_ptrImage, Coords& in_cercleCorr,
-	Point<int>& out_positionBalle)
+void DummyImageProcessingPlugin::trouverPosBille(boost::shared_array<uint8_t> in_ptrImage, 
+	const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque, 
+	int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle)
 {
-	int halfBille = BILLE_HEIGHT / 2;
+	const int halfBille = in_billeSize.y / 2;
 
-	Coords rectCoor(in_cercleCorr.x_left - halfBille,
+	Coords rectCorr(in_cercleCorr.x_left - halfBille,
 		in_cercleCorr.x_right + halfBille,
 		in_cercleCorr.y_top - halfBille,
-		in_cercleCorr.y_bottom - halfBille);
+		in_cercleCorr.y_bottom + halfBille);
 
-	if (rectCoor.x_left < 0)
+	int dx = rectCorr.x_right - rectCorr.x_left + 1;
+	int dy = rectCorr.y_bottom - rectCorr.y_top + 1;
+
+	if (dx % FAST_CORR_COEF != 0)
 	{
-		in_cercleCorr.x_left -= rectCoor.x_left;
-		rectCoor.x_left = 0;
+		rectCorr.x_right + dx % FAST_CORR_COEF;
+		in_cercleCorr.x_right + dx % FAST_CORR_COEF;
+		
 	}
-	if (rectCoor.x_right >= IMAGE_WIDTH)
+	dy += dy % FAST_CORR_COEF;
+
+	if (rectCorr.x_left < 0)
 	{
-		in_cercleCorr.x_right += IMAGE_WIDTH - rectCoor.x_right - 1 ;
-		rectCoor.x_right = IMAGE_WIDTH - 1;
+		in_cercleCorr.x_left -= rectCorr.x_left;
+		rectCorr.x_left = 0;
 	}
-	if (rectCoor.y_top < 0)
+	if (rectCorr.x_right >= in_imageSize.x)
 	{
-		in_cercleCorr.y_top -= rectCoor.y_top;
-		rectCoor.y_top = 0;
+		in_cercleCorr.x_right += in_imageSize.x - rectCorr.x_right - 1;
+		rectCorr.x_right = in_imageSize.x - 1;
 	}
-	if (rectCoor.y_bottom >= IMAGE_HEIGHT)
+	if (rectCorr.y_top < 0)
 	{
-		in_cercleCorr.y_bottom += IMAGE_HEIGHT - rectCoor.y_bottom - 1;
-		rectCoor.y_bottom = IMAGE_HEIGHT - 1;
+		in_cercleCorr.y_top -= rectCorr.y_top;
+		rectCorr.y_top = 0;
+	}
+	if (rectCorr.y_bottom >= in_imageSize.y)
+	{
+		in_cercleCorr.y_bottom += in_imageSize.y - rectCorr.y_bottom - 1;
+		rectCorr.y_bottom = in_imageSize.y - 1;
 	}
 
-	inverseImage(in_ptrImage, rectCoor);
+	inverseImage(in_ptrImage, in_imageSize, rectCorr);
 
+	correlation(in_ptrImage, IMAGE_BILLE_VERTE_INVERSE, in_imageSize, in_billeSize, 
+		in_centrePlaque, in_rayon, in_cercleCorr, out_positionBalle);
+}
+
+void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> in_ptrImage, const int in_imageBille[],
+	const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
+	int in_rayon, const Coords& in_cercleCorr, Point<int>& out_positionBalle)
+{
+	const int halfBille = in_billeSize.y / 2;
+	const int imageWidthX3 = in_imageSize.x * 3;
+	
 	int indexBalle;
 	int conditionBilleX;
 
-	const int conditionBilleY = BILLE_HEIGHT * BILLE_WIDTH;
+	const int conditionBilleY = in_billeSize.y * in_billeSize.x;
 
-	int lastPos1;
-	int lastPos2;
-	int lastPos3;
-	int pos = in_cercleCorr.y_top * IMAGE_WIDTH_X3 + in_cercleCorr.x_left * 3 + GREEN;
-	int conditionX = in_cercleCorr.y_top * IMAGE_WIDTH_X3 + in_cercleCorr.x_right * 3;
+	int lastPos1, lastPos2, lastPos3;
+	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	int conditionX = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_right * 3;
 	
-	const int conditionY = (in_cercleCorr.y_bottom + 1) * IMAGE_WIDTH_X3;
-	const int leftCorner = halfBille * (IMAGE_WIDTH_X3 + 3);
+	const int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	const int leftCorner = halfBille * (imageWidthX3 + 3);
+
+	int max = 0;
+	int indexX = 0, indexY = 0;
+	int dx = 0, dy = 0;
 
 	while (pos < conditionY)
 	{
@@ -481,9 +565,8 @@ void DummyImageProcessingPlugin::trouverPosBille(const boost::shared_array<uint8
 		{
 			lastPos2 = pos;
 			pos -= leftCorner;
-			
 			indexBalle = 0;
-			conditionBilleX = BILLE_WIDTH;
+			conditionBilleX = in_billeSize.x;
 
 			int corr = 0;
 
@@ -492,71 +575,128 @@ void DummyImageProcessingPlugin::trouverPosBille(const boost::shared_array<uint8
 				lastPos3 = pos;
 				while (indexBalle < conditionBilleX)
 				{
-					corr = in_ptrImage[pos] * IMAGE_BALLE_VERTE_INVERSE[indexBalle];
+					corr += in_ptrImage[pos] * IMAGE_BILLE_VERTE_INVERSE[indexBalle];
 					indexBalle++;
 					pos += 3;
 				}
-				conditionBilleX += BILLE_WIDTH;
-				pos = lastPos3 + IMAGE_WIDTH_X3;
+				conditionBilleX += in_billeSize.x;
+				pos = lastPos3 + imageWidthX3;
 			}
 			pos = lastPos2 + 3;
+			if (max < corr)
+			{
+				indexX = pos / 3;
+				indexY = indexX / in_imageSize.y;
+				indexX = indexX % in_imageSize.x;
+				dy = indexY - in_centrePlaque.y;
+				dx = indexX - in_centrePlaque.x;
+
+				if (sqrt(dy*dy + dx*dx) < in_rayon)
+				{
+					max = corr;
+					out_positionBalle.x = indexX;
+					out_positionBalle.y = indexY;
+				}
+			}
 		}
-		conditionX += IMAGE_WIDTH_X3;
-		pos = lastPos1 + IMAGE_WIDTH_X3;
+		conditionX += imageWidthX3;
+		pos = lastPos1 + imageWidthX3;
 	}
 }
 
-void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_ptrImage, Coords& in_cercleCorr)
+void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_ptrImage, 
+		const Point<int>& in_imageSize, const Coords& in_cercleCorr)
 {
+	const int imageWidthX3 = in_imageSize.x * 3;
+	
 	int lastPos;
-	int pos = in_cercleCorr.y_top * IMAGE_WIDTH_X3 + in_cercleCorr.x_left * 3 + GREEN;
-	int conditionY = (in_cercleCorr.y_bottom + 1) * IMAGE_WIDTH_X3;
-	int conditionX = in_cercleCorr.y_top * IMAGE_WIDTH_X3 + in_cercleCorr.x_right * 3;
+	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
 
 	while (pos < conditionY)
 	{
 		lastPos = pos;
 
-		while (pos <= conditionX)
+		while (pos < conditionX)
 		{
 			in_ptrImage[pos] = 255 - in_ptrImage[pos];
 			pos += 3;
 		}
 
-		conditionX += IMAGE_WIDTH_X3;
-		pos = lastPos + IMAGE_WIDTH_X3;
+		conditionX += imageWidthX3;
+		pos = lastPos + imageWidthX3;
 	}
 }
 
-void DummyImageProcessingPlugin::trouverPosCercleCorr(Point<int>& in_positionBalle, int in_pixPerM, Coords& out_coords)
+void DummyImageProcessingPlugin::decimation(boost::shared_array<uint8_t> in_ptrImage, const Point<int>& in_imageSize,
+	const Coords& in_cercleCorr, int in_n, boost::shared_array<uint8_t> out_ptrImage)
 {
-	int deplacement_max = (vitesseMaxMSec / FHZ + 0.5 * accelerationMSec / (FHZ * FHZ)) * in_pixPerM;
+	const int imageWidthX3 = in_imageSize.x * 3;
+	const Point<int> outputSize(in_imageSize.x * 3 / in_n, in_imageSize.y / in_n);
+
+	int lastPos;
+	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
+	int i = GREEN, j = 0;
+
+	while (pos < conditionY)
+	{
+		lastPos = pos;
+		i = GREEN;
+		while (pos < conditionX)
+		{
+			int index = 3*(i / (in_n * 3)) + (j / in_n)*outputSize.x + 1;
+			out_ptrImage[index] += in_ptrImage[pos];
+			pos += 3;
+			i += 3;
+		}
+		j++;
+		conditionX += imageWidthX3;
+		pos = lastPos + imageWidthX3;
+	}
+}
+
+void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_positionBalle, Coords& out_coords)
+{
+	int deplacement_max = (vitesseMaxMSec / FHZ + 0.5 * accelerationMSec / (FHZ * FHZ)) * pixPerM;
 	out_coords.x_left = in_positionBalle.x - deplacement_max;
 	out_coords.x_right = in_positionBalle.x + deplacement_max;
 	out_coords.y_top = in_positionBalle.y - deplacement_max;
 	out_coords.y_bottom = in_positionBalle.y + deplacement_max;
 }
 
-void DummyImageProcessingPlugin::trouverPosCercleCorr(Point<int>& in_positionBalle, Point<double>& in_vitesse,
-	int in_pixPerM, Coords& out_coords)
+void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_positionBalle, const Point<double>& in_vitesse, 
+		const Point<int>& in_centrePlaque, int in_rayon,  Coords& out_coords)
 {
-	out_coords.x_left = in_positionBalle.x + (in_vitesse.x / FHZ - 0.5 * accelerationMSec / (FHZ * FHZ)) * in_pixPerM;
-	out_coords.x_right = in_positionBalle.x + (in_vitesse.x / FHZ + 0.5 * accelerationMSec / (FHZ * FHZ)) * in_pixPerM;
-	out_coords.y_top = in_positionBalle.y + (in_vitesse.y / FHZ - 0.5 * accelerationMSec / (FHZ * FHZ)) * in_pixPerM;
-	out_coords.y_bottom = in_positionBalle.y + (in_vitesse.y / FHZ + 0.5 * accelerationMSec / (FHZ * FHZ)) * in_pixPerM;
+	double accelerationWeight = 0.5 * accelerationMSec * pixPerM / (FHZ * FHZ);
+
+	int centerX = in_positionBalle.x + in_vitesse.x / FHZ;
+	int centerY = in_positionBalle.y + in_vitesse.y / FHZ;
+	double distanceX = centerX - in_centrePlaque.x;
+	double distanceY = centerY - in_centrePlaque.y;
+
+	double distanceCentre = sqrt(distanceX*distanceX + distanceY*distanceY);
+
+	if (distanceCentre <= in_rayon)
+	{
+		out_coords.x_left = centerX - accelerationWeight;
+		out_coords.x_right = centerX + accelerationWeight;
+		out_coords.y_top = centerY - accelerationWeight;
+		out_coords.y_bottom = centerY + accelerationWeight;
+	}
+	else
+	{
+		trouverPosCercleCorr(in_positionBalle, out_coords);
+		isCollision = true;
+	}
 }
 
-
-int main(int argc, char **argv)
+int getImage(string& argv, boost::shared_array<uint8_t> image)
 {
-	if (argc != 2)
-	{
-		cerr << "Erreur: Vous devez specifier seulement l'image a charger" << endl;
-		return EXIT_FAILURE;
-	}
-
 	// Open image file
-	ifstream image_file(argv[1], ios::binary);
+	ifstream image_file(argv, ios::binary);
 	if (!image_file)
 	{
 		cerr << "Erreur: Chemin de l'image invalide" << endl;
@@ -573,20 +713,95 @@ int main(int argc, char **argv)
 	image_file.seekg(0, image_file.beg);
 
 	// Read file
-	boost::shared_array<uint8_t> image(new uint8_t[IMAGE_SIZE]);
 	image_file.read(reinterpret_cast<char *>(image.get()), IMAGE_SIZE);
+}
 
+int main(int argc, char **argv)
+{
+	if (argc != 2)
+	{
+		cerr << "Erreur: Vous devez specifier seulement l'image a charger" << endl;
+		return EXIT_FAILURE;
+	}
+
+	string path = "C:\\Users\\mat_8\\Desktop\\S4\\Projet\\git\\detection\\images\\vitesse_max_version_2\\raw\\image_";
+	string images[] = { "752","786","820","853","886","919","952","986","1019",
+		"1053","1086","1120","1152","1186","1219","1253","1286","1319","1353" };
+
+	Point<double> posBalle;
 	DummyImageProcessingPlugin dipp;
+	boost::shared_array<uint8_t> image(new uint8_t[IMAGE_SIZE]);
+	
+	string fullPath;
 
-	Coords coordsPlaque;
-	Point<int> center;
+	auto start = std::chrono::high_resolution_clock::now();
 
-	dipp.detectionPlaque(image, coordsPlaque, center);
+	// operation to be timed ...
 
-	Point<int> posBalle;
+	auto finish = std::chrono::high_resolution_clock::now();
+	
+	for (int i = 0; i < 19; i++)
+	{
+		fullPath = path + images[i] + ".rgb";
+		cout << images[i] << endl;
+		getImage(fullPath, image);
+		start = std::chrono::high_resolution_clock::now();
+		dipp.OnImage(image, IMAGE_WIDTH, IMAGE_HEIGHT, posBalle.x, posBalle.y);
+		finish = std::chrono::high_resolution_clock::now();
+		std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count()/1000000.0 << "ms\n";
+		cout << posBalle.x << " " << posBalle.y << endl;
+		cout << endl;
+	}
+	
+	boost::shared_array<uint8_t> myImage(new uint8_t[4*4*3]);
+	boost::shared_array<uint8_t> myImageOut(new uint8_t[2*2*3]);
 
-	dipp.trouverPosBille(image, Coords(400, 420, 100, 120), posBalle);
+	for (int j = 0; j < 2; j++)
+	{
+		for (int i = 0; i < 2 * 3; i++)
+		{
+			myImageOut[i + j * 2 * 3] = 0;
+		}
+	}
 
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4 * 3; i++)
+		{
+			myImage[i + j * 4 * 3] = 0;
+		}
+	}
+
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 1; i < 4 * 3; i += 3)
+		{
+			myImage[i + j * 4 * 3] = i / 3 + j*4;
+		}
+	}
+
+	dipp.decimation(myImage, Point<int>(4, 4), Coords(0, 3, 0, 3), 2, myImageOut);
+
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4 * 3; i++)
+		{
+			cout << int(myImage[i + j * 4 * 3]) << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
+
+	for (int j = 0; j < 2; j++)
+	{
+		for (int i = 0; i < 2 * 3; i++)
+		{
+			cout << int(myImageOut[i + j * 2 * 3]) << " ";
+		}
+		cout << endl;
+	}
+
+	/*
 	FILE *imageFile;
 
 	imageFile = fopen("transformedIM.ppm", "wb");
@@ -603,8 +818,7 @@ int main(int argc, char **argv)
 		fprintf(imageFile, "%d %d %d\n", image[i], image[i + GREEN], image[i + 2]);
 	}
 	fclose(imageFile);
-
-
+	*/
 
 	// Votre code ici: l'image est un tableau lineaire de uint8.
 	// Chaque pixel contient 3 uint8 soit les composantes: Red, Green, Blue (expliquant le "*3" dans IMAGE_SIZE)
