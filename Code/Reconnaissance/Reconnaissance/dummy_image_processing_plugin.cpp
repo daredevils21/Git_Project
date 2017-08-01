@@ -37,7 +37,7 @@ namespace
 	const int TWO_THIRD_IMAGE_HEIGHT = 2 * THIRD_IMAGE_HEIGHT;
 
 	const int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
-	const int GREEN = 1;
+	const int RED = 0, GREEN = 1, BLUE = 2;
 
 	const double MAX_SCALE = 0.5;
 	const double DIAMETER_TOLERENCE = 1.05;
@@ -50,7 +50,7 @@ namespace
 
 	const int BILLE_WIDTH = 27;
 	const int BILLE_HEIGHT = 27;
-	const int IMAGE_BILLE_VERTE_INVERSE[] = {
+	const uint8_t IMAGE_BILLE_VERTE_INVERSE[] = {
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 6 , 1 ,15 , 1 ,14 , 1 , 3 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 ,10 , 6 ,28 ,15 ,27 ,14 , 4 , 3 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 ,
@@ -78,6 +78,15 @@ namespace
 		0 , 0 , 0 , 0 , 0 , 0 , 1 ,10 , 1 ,38 ,44 ,79 ,56 ,89 ,51 ,77 ,41 ,56 , 5 , 9 , 1 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 2 , 9 ,17 ,13 ,25 , 5 , 9 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 5 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 };
+
+	const int BILLE_WIDTH_SCALED = 5;
+	const int BILLE_HEIGHT_SCALED = 5;
+	const uint8_t IMAGE_BILLE_VERTE_INVERSE_SCALED[] = {
+		 0 , 7 ,38 ,19 , 0 ,
+		15 ,143,169,164,40 ,
+		62 ,161, 7 ,85 ,116,
+		42 ,180,71 ,149,87 ,
+		 1 ,72 ,139,108, 8 };
 }
 
 struct Coords
@@ -161,15 +170,19 @@ public:
 		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
 		int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle);
 
-	void correlation(const boost::shared_array<uint8_t> in_ptrImage, const int in_imageBille[],
+	void trouverPosBille2(const boost::shared_array<uint8_t> in_ptrImage,
 		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
-		int in_rayon, const Coords& in_cercleCorr, Point<int>& out_positionBalle);
+		int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle);
+
+	void correlation(const boost::shared_array<uint8_t> in_ptrImage, const uint8_t in_imageBille[],
+		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
+		int in_rayon, const Coords& in_cercleCorr, const int in_rgb, Point<int>& out_positionBalle);
 
 	void inverseImage(boost::shared_array<uint8_t> in_ptrImage,
 		const Point<int>& in_imageSize, const Coords& in_cercleCorr);
 
-	void decimation(boost::shared_array<uint8_t> in_ptrImage, const Point<int>& in_imageSize,
-		const Coords& in_cercleCorr, int in_n, boost::shared_array<uint8_t> out_ptrImage);
+	void decimation(const boost::shared_array<uint8_t> in_ptrImage, 
+		const Point<int>& in_imageSize, const Coords& in_cercleCorr, int in_n);
 
 	void trouverPosCercleCorr(const Point<int>& in_positionBalle, Coords& out_coords);
 
@@ -208,8 +221,6 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 	Point<int> centrePlaque;
 	Point<int> posBille;
 
-	const int halfBille = BILLE_WIDTH / 2;
-
 	detectionPlaque(in_ptrImage, coordsPlaque, centrePlaque);
 
 	int rayonPlaque = (coordsPlaque.x_right - coordsPlaque.x_left + coordsPlaque.y_bottom - coordsPlaque.y_top) / 4;
@@ -234,12 +245,7 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 	}
 	else
 	{
-		Coords rectCorr(coordsPlaque.x_left - halfBille,
-			coordsPlaque.x_right + halfBille,
-			coordsPlaque.y_top - halfBille,
-			coordsPlaque.y_bottom + halfBille);
-
-		trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+		trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
 			centrePlaque, rayonPlaque, coordsPlaque, posBille);
 		trouverPosCercleCorr(posBille, prochaineCorr);
 		isPosKnown = true;
@@ -499,17 +505,6 @@ void DummyImageProcessingPlugin::trouverPosBille(boost::shared_array<uint8_t> in
 		in_cercleCorr.y_top - halfBille,
 		in_cercleCorr.y_bottom + halfBille);
 
-	int dx = rectCorr.x_right - rectCorr.x_left + 1;
-	int dy = rectCorr.y_bottom - rectCorr.y_top + 1;
-
-	if (dx % FAST_CORR_COEF != 0)
-	{
-		rectCorr.x_right + dx % FAST_CORR_COEF;
-		in_cercleCorr.x_right + dx % FAST_CORR_COEF;
-		
-	}
-	dy += dy % FAST_CORR_COEF;
-
 	if (rectCorr.x_left < 0)
 	{
 		in_cercleCorr.x_left -= rectCorr.x_left;
@@ -534,12 +529,103 @@ void DummyImageProcessingPlugin::trouverPosBille(boost::shared_array<uint8_t> in
 	inverseImage(in_ptrImage, in_imageSize, rectCorr);
 
 	correlation(in_ptrImage, IMAGE_BILLE_VERTE_INVERSE, in_imageSize, in_billeSize, 
-		in_centrePlaque, in_rayon, in_cercleCorr, out_positionBalle);
+		in_centrePlaque, in_rayon, in_cercleCorr, GREEN, out_positionBalle);
 }
 
-void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> in_ptrImage, const int in_imageBille[],
+void DummyImageProcessingPlugin::trouverPosBille2(boost::shared_array<uint8_t> in_ptrImage,
 	const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
-	int in_rayon, const Coords& in_cercleCorr, Point<int>& out_positionBalle)
+	int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle)
+{
+	const int halfBilleNorm = in_billeSize.y / (2 * FAST_CORR_COEF);
+
+	int dx = (in_cercleCorr.x_right - in_cercleCorr.x_left + 1) % FAST_CORR_COEF;
+	int dy = (in_cercleCorr.y_bottom - in_cercleCorr.y_top + 1) % FAST_CORR_COEF;
+
+	if (dx != 0)
+	{
+		in_cercleCorr.x_right += FAST_CORR_COEF - dx;
+	}
+	if (dy != 0)
+	{
+		in_cercleCorr.y_bottom += FAST_CORR_COEF - dy;
+	}
+
+	Coords rectCorr(in_cercleCorr.x_left - FAST_CORR_COEF * halfBilleNorm,
+		in_cercleCorr.x_right + FAST_CORR_COEF * halfBilleNorm,
+		in_cercleCorr.y_top - FAST_CORR_COEF * halfBilleNorm,
+		in_cercleCorr.y_bottom + FAST_CORR_COEF * halfBilleNorm);
+
+	if (rectCorr.x_left < 0)
+	{
+		in_cercleCorr.x_left -= rectCorr.x_left;
+		in_cercleCorr.x_right -= rectCorr.x_left;
+		rectCorr.x_right -= rectCorr.x_left;
+		rectCorr.x_left = 0;
+	}
+	else if (rectCorr.x_right >= in_imageSize.x)
+	{
+		in_cercleCorr.x_right += in_imageSize.x - rectCorr.x_right - 1;
+		in_cercleCorr.x_left += in_imageSize.x - rectCorr.x_right - 1;
+		rectCorr.x_left += in_imageSize.x - rectCorr.x_right - 1;
+		rectCorr.x_right = in_imageSize.x - 1;
+	}
+	else
+	{
+		int mod5x = rectCorr.x_left % 5;
+		if (mod5x != 0)
+		{
+			in_cercleCorr.x_right += FAST_CORR_COEF - mod5x;
+			rectCorr.x_right += FAST_CORR_COEF - mod5x;
+			in_cercleCorr.x_left += FAST_CORR_COEF - mod5x;
+			rectCorr.x_left += FAST_CORR_COEF - mod5x;
+		}
+	}
+
+	if (rectCorr.y_top < 0)
+	{
+		in_cercleCorr.y_top -= rectCorr.y_top;
+		in_cercleCorr.y_bottom -= rectCorr.y_top;
+		rectCorr.y_bottom -= rectCorr.y_top;
+		rectCorr.y_top = 0;
+	}
+	else if (rectCorr.y_bottom >= in_imageSize.y)
+	{
+		in_cercleCorr.y_bottom += in_imageSize.y - rectCorr.y_bottom - 1;
+		in_cercleCorr.y_top += in_imageSize.y - rectCorr.y_bottom - 1;
+		rectCorr.y_top += in_imageSize.y - rectCorr.y_bottom - 1;
+		rectCorr.y_bottom = in_imageSize.y - 1;
+	}
+	else
+	{
+		int mod5y = rectCorr.y_top % 5;
+		if (mod5y != 0)
+		{
+			in_cercleCorr.y_top += FAST_CORR_COEF - mod5y;
+			rectCorr.y_top += FAST_CORR_COEF - mod5y;
+			in_cercleCorr.y_bottom += FAST_CORR_COEF - mod5y;
+			rectCorr.y_bottom += FAST_CORR_COEF - mod5y;
+		}
+	}
+
+	inverseImage(in_ptrImage, in_imageSize, rectCorr);
+
+	decimation(in_ptrImage, in_imageSize, rectCorr, FAST_CORR_COEF);
+
+	correlation(in_ptrImage, IMAGE_BILLE_VERTE_INVERSE_SCALED,
+		Point<int>(in_imageSize.x / FAST_CORR_COEF, in_imageSize.y / FAST_CORR_COEF),
+		Point<int>(BILLE_WIDTH_SCALED, BILLE_HEIGHT_SCALED),
+		Point<int>(in_centrePlaque.x / FAST_CORR_COEF, in_centrePlaque.y / FAST_CORR_COEF),
+		in_rayon / FAST_CORR_COEF, 
+		Coords(in_cercleCorr.x_left / FAST_CORR_COEF, in_cercleCorr.x_right / FAST_CORR_COEF, 
+			in_cercleCorr.y_top / FAST_CORR_COEF, in_cercleCorr.y_bottom / FAST_CORR_COEF), RED, out_positionBalle);
+
+	out_positionBalle.x *= FAST_CORR_COEF;
+	out_positionBalle.y *= FAST_CORR_COEF;
+}
+
+void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> in_ptrImage, const uint8_t in_imageBille[],
+	const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
+	int in_rayon, const Coords& in_cercleCorr, const int in_rgb, Point<int>& out_positionBalle)
 {
 	const int halfBille = in_billeSize.y / 2;
 	const int imageWidthX3 = in_imageSize.x * 3;
@@ -550,7 +636,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 	const int conditionBilleY = in_billeSize.y * in_billeSize.x;
 
 	int lastPos1, lastPos2, lastPos3;
-	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + in_rgb;
 	int conditionX = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_right * 3;
 	
 	const int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
@@ -578,14 +664,16 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 				lastPos3 = pos;
 				while (indexBalle < conditionBilleX)
 				{
-					corr += in_ptrImage[pos] * IMAGE_BILLE_VERTE_INVERSE[indexBalle];
+					corr += in_ptrImage[pos] * in_imageBille[indexBalle];
 					indexBalle++;
 					pos += 3;
 				}
 				conditionBilleX += in_billeSize.x;
 				pos = lastPos3 + imageWidthX3;
 			}
+
 			pos = lastPos2 + 3;
+
 			if (max < corr)
 			{
 				indexX = pos / 3;
@@ -601,6 +689,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 					out_positionBalle.y = indexY;
 				}
 			}
+			pos += 3;
 		}
 		conditionX += imageWidthX3;
 		pos = lastPos1 + imageWidthX3;
@@ -632,30 +721,48 @@ void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_pt
 	}
 }
 
-void DummyImageProcessingPlugin::decimation(boost::shared_array<uint8_t> in_ptrImage, const Point<int>& in_imageSize,
-	const Coords& in_cercleCorr, int in_n, boost::shared_array<uint8_t> out_ptrImage)
+void DummyImageProcessingPlugin::decimation(const boost::shared_array<uint8_t> in_ptrImage, 
+	const Point<int>& in_imageSize,	const Coords& in_cercleCorr, int in_n)
 {
 	const int imageWidthX3 = in_imageSize.x * 3;
-	const Point<int> outputSize(in_imageSize.x * 3 / in_n, in_imageSize.y / in_n);
+	const Point<int> outputSize((in_cercleCorr.x_right - in_cercleCorr.x_left + 1) * 3 / in_n, 
+		(in_cercleCorr.y_bottom - in_cercleCorr.y_top + 1) / in_n);
 
 	int lastPos;
+	
 	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
 	int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
 	int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
-	int i = GREEN, j = 0;
 
+	int index = (in_cercleCorr.y_top / in_n) * (imageWidthX3 / in_n) + 3*(in_cercleCorr.x_left/in_n) , lastIndex;
+	int i = 0, j = 0;
 	while (pos < conditionY)
 	{
+		lastIndex = index;
 		lastPos = pos;
-		i = GREEN;
 		while (pos < conditionX)
 		{
-			int index = 3*(i / (in_n * 3)) + (j / in_n)*outputSize.x + 1;
-			out_ptrImage[index] += in_ptrImage[pos];
+			if (i == 0 && j == 0)
+			{
+				in_ptrImage[index] = 0;
+			}
+			
+			in_ptrImage[index] += in_ptrImage[pos] / (in_n * in_n);
 			pos += 3;
-			i += 3;
+			i++;
+			if (i / in_n == 1)
+			{
+				index += 3;
+				i = 0;
+			}
 		}
 		j++;
+		index = lastIndex;
+		if (j / in_n == 1)
+		{
+			index += imageWidthX3 / in_n;
+			j = 0;
+		}
 		conditionX += imageWidthX3;
 		pos = lastPos + imageWidthX3;
 	}
@@ -779,6 +886,8 @@ int main(int argc, char **argv)
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// operation to be timed ...
+	
+	auto finish = std::chrono::high_resolution_clock::now();
 
 	auto finish = std::chrono::high_resolution_clock::now();
 
@@ -802,52 +911,46 @@ int main(int argc, char **argv)
 	}
 	//boost::shared_array<uint8_t> myImage(new uint8_t[4*4*3]);
 	//boost::shared_array<uint8_t> myImageOut(new uint8_t[2*2*3]);
+	/*
+	boost::shared_array<uint8_t> myImageOut(new uint8_t[25*3]);
 
-	//for (int j = 0; j < 2; j++)
-	//{
-	//	for (int i = 0; i < 2 * 3; i++)
-	//	{
-	//		myImageOut[i + j * 2 * 3] = 0;
-	//	}
-	//}
+	for (int j = 0; j < FAST_CORR_COEF; j++)
+	{
+		for (int i = 0; i < FAST_CORR_COEF * 3; i++)
+		{
+			myImageOut[i + j * FAST_CORR_COEF * 3] = 0;
+		}
+	}
 
-	//for (int j = 0; j < 4; j++)
-	//{
-	//	for (int i = 0; i < 4 * 3; i++)
-	//	{
-	//		myImage[i + j * 4 * 3] = 0;
-	//	}
-	//}
+	uint8_t TABLEAU[27*27*3];
+	for (int j = 0; j < 27; j++)
+	{
+		for (int i = 0; i < 27 * 3; i++)
+		{
+			if (i % 3 == 0 || i % 3 == 2)
+			{
+				TABLEAU[i + j * 27*3] = 0;
+			}
+			if (i % 3 == 1)
+			{
+				TABLEAU[i + j * 27 * 3] = IMAGE_BILLE_VERTE_INVERSE[i/3 + j * 27];
+			}
+			cout << int(TABLEAU[i + j * 27 * 3]) << ":";
+		}
+		cout << endl << endl;;
+	}
 
-	//for (int j = 0; j < 4; j++)
-	//{
-	//	for (int i = 1; i < 4 * 3; i += 3)
-	//	{
-	//		myImage[i + j * 4 * 3] = i / 3 + j*4;
-	//	}
-	//}
+	dipp.decimation(TABLEAU, Point<int>(27, 27), Coords(0, 24, 0, 24), FAST_CORR_COEF, myImageOut);
 
-	//dipp.decimation(myImage, Point<int>(4, 4), Coords(0, 3, 0, 3), 2, myImageOut);
-
-	//for (int j = 0; j < 4; j++)
-	//{
-	//	for (int i = 0; i < 4 * 3; i++)
-	//	{
-	//		cout << int(myImage[i + j * 4 * 3]) << " ";
-	//	}
-	//	cout << endl;
-	//}
-	//cout << endl;
-
-	//for (int j = 0; j < 2; j++)
-	//{
-	//	for (int i = 0; i < 2 * 3; i++)
-	//	{
-	//		cout << int(myImageOut[i + j * 2 * 3]) << " ";
-	//	}
-	//	cout << endl;
-	//}
-
+	for (int j = 0; j < FAST_CORR_COEF; j++)
+	{
+		for (int i = 0; i < FAST_CORR_COEF * 3; i++)
+		{
+			cout << int(myImageOut[i + j * FAST_CORR_COEF * 3]) << " ";
+		}
+		cout << endl;
+	}
+	
 	/*
 	FILE *imageFile;
 
