@@ -15,8 +15,10 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-using namespace std;
+#include <direct.h>
+#define GetCurrentDir _getcwd
 
+using namespace std;
 namespace
 {
 	const int IMAGE_WIDTH = 480;
@@ -226,6 +228,7 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 		{
 			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
 			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
+
 			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
 		}
 	}
@@ -259,8 +262,8 @@ void DummyImageProcessingPlugin::OnBallPosition(double in_dXPos, double in_dYPos
 		lastPos.y = in_dYPos;
 	}
 
-	out_dXDiff = 0.0;
-	out_dYDiff = 0.0;
+	out_dXDiff = lastVitesse.x;
+	out_dYDiff = lastVitesse.y;
 }
 
 void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Coords& out_coords, 
@@ -724,11 +727,50 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	string path = "C:\\Users\\mat_8\\Desktop\\S4\\Projet\\git\\detection\\images\\vitesse_max_version_2\\raw\\image_";
-	string images[] = { "752","786","820","853","886","919","952","986","1019",
-		"1053","1086","1120","1152","1186","1219","1253","1286","1319","1353" };
+	char cCurrentPath[FILENAME_MAX];
+
+	if (!GetCurrentDir(cCurrentPath, sizeof(cCurrentPath)))
+	{
+		return errno;
+	}
+
+	cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+
+	string folder = "asservissement_actif";
+	string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_122.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_786.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1085.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2585.rgb", "image_2619.rgb", "image_2652.rgb", "image_2685.rgb", "image_2718.rgb", "image_2752.rgb", "image_2785.rgb", "image_2819.rgb", "image_2852.rgb", "image_2885.rgb", "image_2918.rgb", "image_2952.rgb", "image_2985.rgb", "image_3019.rgb", "image_3052.rgb", "image_3085.rgb", "image_3119.rgb", "image_3152.rgb", "image_3185.rgb", "image_3218.rgb", "image_3252.rgb", "image_3285.rgb", "image_3318.rgb", "image_3351.rgb", "image_3385.rgb", "image_3418.rgb", "image_3452.rgb", "image_3485.rgb", "image_3518.rgb", "image_3552.rgb", "image_3585.rgb", "image_3618.rgb", "image_3651.rgb", "image_3685.rgb", "image_3719.rgb", "image_3752.rgb", "image_3785.rgb", "image_3818.rgb", "image_3852.rgb", "image_3885.rgb", "image_3918.rgb", "image_3951.rgb", "image_3985.rgb", "image_4018.rgb", "image_4051.rgb", "image_4085.rgb", "image_4118.rgb", "image_4152.rgb", "image_4185.rgb", "image_4218.rgb", "image_4251.rgb", "image_4285.rgb", "image_4318.rgb", "image_4352.rgb", "image_4385.rgb", "image_4418.rgb", "image_4452.rgb", "image_4485.rgb", "image_4518.rgb", "image_4551.rgb", "image_4585.rgb", "image_4618.rgb", "image_4652.rgb", "image_4685.rgb", "image_4718.rgb", "image_4752.rgb", "image_4785.rgb", "image_4818.rgb", "image_4851.rgb", "image_4885.rgb", "image_4918.rgb", "image_4952.rgb", "image_4985.rgb", "image_5018.rgb", "image_5051.rgb", "image_5085.rgb", "image_5118.rgb", "image_5151.rgb", "image_5185.rgb", "image_5218.rgb", "image_5252.rgb", "image_5285.rgb", "image_5318.rgb", "image_5351.rgb", "image_5385.rgb", "image_5418.rgb", "image_5452.rgb", "image_5485.rgb", "image_5518.rgb", "image_5552.rgb", "image_5585.rgb", "image_5618.rgb", "image_5651.rgb", "image_5685.rgb", "image_5718.rgb", "image_5751.rgb", "image_5785.rgb", "image_5818.rgb", "image_5851.rgb", "image_5885.rgb", "image_5918.rgb", "image_5951.rgb", "image_5985.rgb", "image_6018.rgb", "image_6051.rgb", "image_6084.rgb", "image_6118.rgb", "image_6152.rgb", "image_6185.rgb", "image_6218.rgb", "image_6251.rgb", "image_6285.rgb", "image_6318.rgb" };
+
+	//string folder = "statique_zmax_version_1";
+	//string images[] = { "image_0.rgb", "image_20.rgb", "image_53.rgb", "image_86.rgb", "image_121.rgb", "image_156.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_318.rgb", "image_352.rgb", "image_385.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_518.rgb", "image_552.rgb", "image_585.rgb", "image_618.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_752.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_918.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1084.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1218.rgb", "image_1251.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1451.rgb", "image_1485.rgb", "image_1518.rgb", "image_1551.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1684.rgb", "image_1718.rgb", "image_1751.rgb", "image_1785.rgb", "image_1818.rgb", "image_1851.rgb", "image_1884.rgb", "image_1918.rgb", "image_1951.rgb", "image_1985.rgb", "image_2018.rgb", "image_2051.rgb", "image_2084.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2251.rgb", "image_2284.rgb", "image_2318.rgb", "image_2351.rgb", "image_2384.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2584.rgb", "image_2618.rgb", "image_2651.rgb", "image_2684.rgb", "image_2718.rgb" };
+
+	//string folder = "statique_zmax_version_2";
+	//string images[] = { "image_0.rgb", "image_20.rgb", "image_54.rgb", "image_85.rgb", "image_119.rgb", "image_156.rgb", "image_187.rgb", "image_221.rgb", "image_253.rgb", "image_287.rgb", "image_320.rgb", "image_353.rgb", "image_386.rgb", "image_420.rgb", "image_454.rgb", "image_487.rgb", "image_520.rgb", "image_553.rgb", "image_586.rgb", "image_619.rgb", "image_653.rgb", "image_686.rgb", "image_719.rgb", "image_753.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_953.rgb", "image_986.rgb", "image_1020.rgb", "image_1053.rgb", "image_1086.rgb", "image_1119.rgb", "image_1153.rgb", "image_1186.rgb", "image_1219.rgb", "image_1252.rgb", "image_1286.rgb", "image_1320.rgb", "image_1353.rgb", "image_1386.rgb", "image_1419.rgb", "image_1452.rgb", "image_1487.rgb", "image_1519.rgb", "image_1553.rgb", "image_1586.rgb", "image_1619.rgb", "image_1653.rgb", "image_1686.rgb", "image_1719.rgb", "image_1752.rgb", "image_1786.rgb", "image_1819.rgb", "image_1853.rgb", "image_1886.rgb", "image_1919.rgb", "image_1952.rgb", "image_1986.rgb", "image_2019.rgb", "image_2053.rgb", "image_2086.rgb", "image_2119.rgb", "image_2153.rgb", "image_2186.rgb", "image_2219.rgb", "image_2252.rgb", "image_2286.rgb", "image_2320.rgb", "image_2353.rgb", "image_2386.rgb", "image_2419.rgb", "image_2453.rgb", "image_2487.rgb" };
+
+	//string folder = "statique_zmax_version_3";
+	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_123.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_418.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_752.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_918.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1086.rgb", "image_1119.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1751.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2018.rgb", "image_2051.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb" };
+
+	//string folder = "statique_zmin_version_1";
+	//string images[] = { "image_0.rgb", "image_19.rgb", "image_53.rgb", "image_88.rgb", "image_123.rgb", "image_155.rgb", "image_186.rgb", "image_218.rgb", "image_251.rgb", "image_285.rgb", "image_318.rgb", "image_351.rgb", "image_385.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_518.rgb", "image_552.rgb", "image_585.rgb", "image_618.rgb", "image_651.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_884.rgb", "image_918.rgb", "image_951.rgb", "image_985.rgb", "image_1018.rgb", "image_1051.rgb", "image_1084.rgb", "image_1118.rgb", "image_1151.rgb", "image_1184.rgb", "image_1217.rgb", "image_1251.rgb", "image_1285.rgb", "image_1317.rgb", "image_1351.rgb", "image_1384.rgb", "image_1418.rgb", "image_1451.rgb", "image_1485.rgb", "image_1518.rgb", "image_1551.rgb", "image_1584.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1751.rgb", "image_1784.rgb", "image_1817.rgb", "image_1851.rgb", "image_1884.rgb", "image_1918.rgb", "image_1951.rgb", "image_1984.rgb", "image_2017.rgb", "image_2051.rgb", "image_2084.rgb", "image_2117.rgb", "image_2151.rgb" };
+
+	//string folder = "statique_zmin_version_2";
+	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_86.rgb", "image_124.rgb", "image_154.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_421.rgb", "image_452.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_719.rgb", "image_752.rgb", "image_785.rgb", "image_819.rgb", "image_852.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1019.rgb", "image_1052.rgb", "image_1085.rgb", "image_1119.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1419.rgb", "image_1452.rgb", "image_1485.rgb", "image_1519.rgb", "image_1552.rgb", "image_1585.rgb", "image_1619.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb" };
+
+	//string folder = "statique_zmin_version_3";
+	//string images[] = { "image_0.rgb", "image_22.rgb", "image_53.rgb", "image_86.rgb", "image_126.rgb", "image_158.rgb", "image_187.rgb", "image_220.rgb", "image_253.rgb", "image_286.rgb", "image_320.rgb", "image_353.rgb", "image_386.rgb", "image_420.rgb", "image_453.rgb", "image_486.rgb", "image_519.rgb", "image_553.rgb", "image_586.rgb", "image_619.rgb", "image_652.rgb", "image_686.rgb", "image_719.rgb", "image_752.rgb", "image_785.rgb", "image_819.rgb", "image_852.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1019.rgb", "image_1052.rgb", "image_1085.rgb", "image_1119.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1519.rgb", "image_1552.rgb", "image_1585.rgb", "image_1619.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1786.rgb", "image_1819.rgb", "image_1852.rgb", "image_1886.rgb", "image_1919.rgb", "image_1952.rgb", "image_1986.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2119.rgb", "image_2152.rgb", "image_2186.rgb", "image_2219.rgb", "image_2252.rgb", "image_2286.rgb", "image_2319.rgb", "image_2353.rgb", "image_2385.rgb" };
+
+	//string folder = "vitesse_max_version_1";
+	//string images[] = { "image_718.rgb", "image_751.rgb", "image_785.rgb", "image_818.rgb", "image_852.rgb", "image_884.rgb", "image_918.rgb", "image_951.rgb", "image_985.rgb", "image_1018.rgb", "image_1051.rgb", "image_1084.rgb", "image_1118.rgb", "image_1151.rgb", "image_1184.rgb", "image_1218.rgb" };
+
+	//string folder = "vitesse_max_version_2";
+	//string images[] = { "image_752.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_986.rgb", "image_1019.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb" };
+
+	//string folder = "vitesse_max_version_3";
+	//string images[] = { "image_652.rgb", "image_686.rgb", "image_720.rgb", "image_753.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_920.rgb", "image_953.rgb", "image_987.rgb", "image_1020.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1153.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb", "image_1386.rgb", "image_1420.rgb", "image_1453.rgb", "image_1486.rgb", "image_1519.rgb", "image_1553.rgb", "image_1586.rgb", "image_1619.rgb", "image_1653.rgb", "image_1686.rgb", "image_1720.rgb", "image_1753.rgb", "image_1786.rgb", "image_1819.rgb", "image_1853.rgb", "image_1887.rgb", "image_1919.rgb", "image_1952.rgb" };
+
+
+	string path = (string)cCurrentPath + "\\..\\..\\..\\images\\" + folder + "\\raw\\";
 
 	Point<double> posBalle;
+	Point<double> vitBalle;
 	DummyImageProcessingPlugin dipp;
 	boost::shared_array<uint8_t> image(new uint8_t[IMAGE_SIZE]);
 	
@@ -739,67 +781,72 @@ int main(int argc, char **argv)
 	// operation to be timed ...
 
 	auto finish = std::chrono::high_resolution_clock::now();
-	
-	for (int i = 0; i < 19; i++)
+
+	cout << folder << endl;
+	int arraySize = (sizeof(images) / sizeof(*images));
+	for (int i = 0; i < arraySize; i++)
 	{
-		fullPath = path + images[i] + ".rgb";
-		cout << images[i] << endl;
+		fullPath = path + images[i];
 		getImage(fullPath, image);
+
 		start = std::chrono::high_resolution_clock::now();
+
 		dipp.OnImage(image, IMAGE_WIDTH, IMAGE_HEIGHT, posBalle.x, posBalle.y);
+		dipp.OnBallPosition(posBalle.x, posBalle.y, vitBalle.x, vitBalle.y);
+
 		finish = std::chrono::high_resolution_clock::now();
-		std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count()/1000000.0 << "ms\n";
-		cout << posBalle.x << " " << posBalle.y << endl;
-		cout << endl;
-	}
-	
-	boost::shared_array<uint8_t> myImage(new uint8_t[4*4*3]);
-	boost::shared_array<uint8_t> myImageOut(new uint8_t[2*2*3]);
 
-	for (int j = 0; j < 2; j++)
-	{
-		for (int i = 0; i < 2 * 3; i++)
-		{
-			myImageOut[i + j * 2 * 3] = 0;
-		}
+		cout << i << ".\t" << images[i] << "\t P: (" << posBalle.x << ", " << posBalle.y << ")\tV: (" 
+			 << vitBalle.x << ", " << vitBalle.y << ")\tTemps : " 
+			 << chrono::duration_cast<chrono::nanoseconds>(finish - start).count() / 1000000.0 << "ms" << endl;
 	}
+	//boost::shared_array<uint8_t> myImage(new uint8_t[4*4*3]);
+	//boost::shared_array<uint8_t> myImageOut(new uint8_t[2*2*3]);
 
-	for (int j = 0; j < 4; j++)
-	{
-		for (int i = 0; i < 4 * 3; i++)
-		{
-			myImage[i + j * 4 * 3] = 0;
-		}
-	}
+	//for (int j = 0; j < 2; j++)
+	//{
+	//	for (int i = 0; i < 2 * 3; i++)
+	//	{
+	//		myImageOut[i + j * 2 * 3] = 0;
+	//	}
+	//}
 
-	for (int j = 0; j < 4; j++)
-	{
-		for (int i = 1; i < 4 * 3; i += 3)
-		{
-			myImage[i + j * 4 * 3] = i / 3 + j*4;
-		}
-	}
+	//for (int j = 0; j < 4; j++)
+	//{
+	//	for (int i = 0; i < 4 * 3; i++)
+	//	{
+	//		myImage[i + j * 4 * 3] = 0;
+	//	}
+	//}
 
-	dipp.decimation(myImage, Point<int>(4, 4), Coords(0, 3, 0, 3), 2, myImageOut);
+	//for (int j = 0; j < 4; j++)
+	//{
+	//	for (int i = 1; i < 4 * 3; i += 3)
+	//	{
+	//		myImage[i + j * 4 * 3] = i / 3 + j*4;
+	//	}
+	//}
 
-	for (int j = 0; j < 4; j++)
-	{
-		for (int i = 0; i < 4 * 3; i++)
-		{
-			cout << int(myImage[i + j * 4 * 3]) << " ";
-		}
-		cout << endl;
-	}
-	cout << endl;
+	//dipp.decimation(myImage, Point<int>(4, 4), Coords(0, 3, 0, 3), 2, myImageOut);
 
-	for (int j = 0; j < 2; j++)
-	{
-		for (int i = 0; i < 2 * 3; i++)
-		{
-			cout << int(myImageOut[i + j * 2 * 3]) << " ";
-		}
-		cout << endl;
-	}
+	//for (int j = 0; j < 4; j++)
+	//{
+	//	for (int i = 0; i < 4 * 3; i++)
+	//	{
+	//		cout << int(myImage[i + j * 4 * 3]) << " ";
+	//	}
+	//	cout << endl;
+	//}
+	//cout << endl;
+
+	//for (int j = 0; j < 2; j++)
+	//{
+	//	for (int i = 0; i < 2 * 3; i++)
+	//	{
+	//		cout << int(myImageOut[i + j * 2 * 3]) << " ";
+	//	}
+	//	cout << endl;
+	//}
 
 	/*
 	FILE *imageFile;
