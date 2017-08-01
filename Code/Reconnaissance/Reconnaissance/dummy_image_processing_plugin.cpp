@@ -199,10 +199,11 @@ private:
 	double pixPerM;
 	bool isPosKnown;
 	bool isCollision;
+	bool isDecimatedRequired;
 };
 
 DummyImageProcessingPlugin::DummyImageProcessingPlugin()
-	: isPosKnown(false), isCollision(false)
+	: isPosKnown(false), isCollision(false), isDecimatedRequired(false)
 {
 	accelerationMSec = 5.0 / 7.0 * 9.81 * sin(THETA);
 	double t = sqrt((RAYON_PLAQUE_M * 2) / accelerationMSec);
@@ -228,18 +229,28 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 
 	if (isPosKnown)
 	{
-		trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
-			centrePlaque, rayonPlaque, prochaineCorr, posBille);
 		if (isCollision)
 		{
-			trouverPosCercleCorr(posBille, prochaineCorr);
 			isCollision = false;
+			trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+				centrePlaque, rayonPlaque, prochaineCorr, posBille);
+			trouverPosCercleCorr(posBille, prochaineCorr);
+		}
+		else if (isDecimatedRequired)
+		{
+			isDecimatedRequired = false;
+			trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+				centrePlaque, rayonPlaque, prochaineCorr, posBille);
+			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
+			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
+			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
 		}
 		else
 		{
+			trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
+				centrePlaque, rayonPlaque, prochaineCorr, posBille);
 			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
 			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
-
 			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
 		}
 	}
@@ -621,6 +632,10 @@ void DummyImageProcessingPlugin::trouverPosBille2(boost::shared_array<uint8_t> i
 
 	out_positionBalle.x *= FAST_CORR_COEF;
 	out_positionBalle.y *= FAST_CORR_COEF;
+
+	correlation(in_ptrImage, IMAGE_BILLE_VERTE_INVERSE, in_imageSize, in_billeSize, in_centrePlaque, in_rayon,
+		Coords(out_positionBalle.x - FAST_CORR_COEF, out_positionBalle.x + FAST_CORR_COEF,
+			out_positionBalle.y - FAST_CORR_COEF, out_positionBalle.y + FAST_CORR_COEF), GREEN, out_positionBalle);
 }
 
 void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> in_ptrImage, const uint8_t in_imageBille[],
@@ -629,6 +644,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 {
 	const int halfBille = in_billeSize.y / 2;
 	const int imageWidthX3 = in_imageSize.x * 3;
+	const int rayonBillePlaque = in_billeSize.y + in_rayon;
 	
 	int indexBalle;
 	int conditionBilleX;
@@ -642,7 +658,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 	const int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
 	const int leftCorner = halfBille * (imageWidthX3 + 3);
 
-	int max = 0;
+	int max = 0, scale = 0;
 	int indexX = 0, indexY = 0;
 	int dx = 0, dy = 0;
 
@@ -681,12 +697,35 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 				indexX = indexX % in_imageSize.x;
 				dy = indexY - in_centrePlaque.y;
 				dx = indexX - in_centrePlaque.x;
+				int d = sqrt(dy*dy + dx*dx);
 
-				if (sqrt(dy*dy + dx*dx) < in_rayon)
+				if (d < in_rayon)
 				{
-					max = corr;
-					out_positionBalle.x = indexX;
-					out_positionBalle.y = indexY;
+					if (in_rgb == RED)
+					{
+						if (d + in_billeSize.x > in_rayon)
+						{
+							scale = (d - rayonBillePlaque) / halfBille;
+							if (max < corr / scale)
+							{
+								max = corr / scale;
+								out_positionBalle.x = indexX;
+								out_positionBalle.y = indexY;
+							}
+						}
+						else
+						{
+							max = corr;
+							out_positionBalle.x = indexX;
+							out_positionBalle.y = indexY;
+						}
+					}
+					else
+					{
+						max = corr;
+						out_positionBalle.x = indexX;
+						out_positionBalle.y = indexY;
+					}
 				}
 			}
 			pos += 3;
@@ -775,6 +814,7 @@ void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_posit
 	out_coords.x_right = in_positionBalle.x + deplacement_max;
 	out_coords.y_top = in_positionBalle.y - deplacement_max;
 	out_coords.y_bottom = in_positionBalle.y + deplacement_max;
+	isDecimatedRequired = true;
 }
 
 void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_positionBalle, const Point<double>& in_vitesse, 
@@ -843,8 +883,8 @@ int main(int argc, char **argv)
 
 	cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
 
-	string folder = "asservissement_actif";
-	string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_122.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_786.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1085.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2585.rgb", "image_2619.rgb", "image_2652.rgb", "image_2685.rgb", "image_2718.rgb", "image_2752.rgb", "image_2785.rgb", "image_2819.rgb", "image_2852.rgb", "image_2885.rgb", "image_2918.rgb", "image_2952.rgb", "image_2985.rgb", "image_3019.rgb", "image_3052.rgb", "image_3085.rgb", "image_3119.rgb", "image_3152.rgb", "image_3185.rgb", "image_3218.rgb", "image_3252.rgb", "image_3285.rgb", "image_3318.rgb", "image_3351.rgb", "image_3385.rgb", "image_3418.rgb", "image_3452.rgb", "image_3485.rgb", "image_3518.rgb", "image_3552.rgb", "image_3585.rgb", "image_3618.rgb", "image_3651.rgb", "image_3685.rgb", "image_3719.rgb", "image_3752.rgb", "image_3785.rgb", "image_3818.rgb", "image_3852.rgb", "image_3885.rgb", "image_3918.rgb", "image_3951.rgb", "image_3985.rgb", "image_4018.rgb", "image_4051.rgb", "image_4085.rgb", "image_4118.rgb", "image_4152.rgb", "image_4185.rgb", "image_4218.rgb", "image_4251.rgb", "image_4285.rgb", "image_4318.rgb", "image_4352.rgb", "image_4385.rgb", "image_4418.rgb", "image_4452.rgb", "image_4485.rgb", "image_4518.rgb", "image_4551.rgb", "image_4585.rgb", "image_4618.rgb", "image_4652.rgb", "image_4685.rgb", "image_4718.rgb", "image_4752.rgb", "image_4785.rgb", "image_4818.rgb", "image_4851.rgb", "image_4885.rgb", "image_4918.rgb", "image_4952.rgb", "image_4985.rgb", "image_5018.rgb", "image_5051.rgb", "image_5085.rgb", "image_5118.rgb", "image_5151.rgb", "image_5185.rgb", "image_5218.rgb", "image_5252.rgb", "image_5285.rgb", "image_5318.rgb", "image_5351.rgb", "image_5385.rgb", "image_5418.rgb", "image_5452.rgb", "image_5485.rgb", "image_5518.rgb", "image_5552.rgb", "image_5585.rgb", "image_5618.rgb", "image_5651.rgb", "image_5685.rgb", "image_5718.rgb", "image_5751.rgb", "image_5785.rgb", "image_5818.rgb", "image_5851.rgb", "image_5885.rgb", "image_5918.rgb", "image_5951.rgb", "image_5985.rgb", "image_6018.rgb", "image_6051.rgb", "image_6084.rgb", "image_6118.rgb", "image_6152.rgb", "image_6185.rgb", "image_6218.rgb", "image_6251.rgb", "image_6285.rgb", "image_6318.rgb" };
+	//string folder = "asservissement_actif";
+	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_122.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_786.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1085.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2585.rgb", "image_2619.rgb", "image_2652.rgb", "image_2685.rgb", "image_2718.rgb", "image_2752.rgb", "image_2785.rgb", "image_2819.rgb", "image_2852.rgb", "image_2885.rgb", "image_2918.rgb", "image_2952.rgb", "image_2985.rgb", "image_3019.rgb", "image_3052.rgb", "image_3085.rgb", "image_3119.rgb", "image_3152.rgb", "image_3185.rgb", "image_3218.rgb", "image_3252.rgb", "image_3285.rgb", "image_3318.rgb", "image_3351.rgb", "image_3385.rgb", "image_3418.rgb", "image_3452.rgb", "image_3485.rgb", "image_3518.rgb", "image_3552.rgb", "image_3585.rgb", "image_3618.rgb", "image_3651.rgb", "image_3685.rgb", "image_3719.rgb", "image_3752.rgb", "image_3785.rgb", "image_3818.rgb", "image_3852.rgb", "image_3885.rgb", "image_3918.rgb", "image_3951.rgb", "image_3985.rgb", "image_4018.rgb", "image_4051.rgb", "image_4085.rgb", "image_4118.rgb", "image_4152.rgb", "image_4185.rgb", "image_4218.rgb", "image_4251.rgb", "image_4285.rgb", "image_4318.rgb", "image_4352.rgb", "image_4385.rgb", "image_4418.rgb", "image_4452.rgb", "image_4485.rgb", "image_4518.rgb", "image_4551.rgb", "image_4585.rgb", "image_4618.rgb", "image_4652.rgb", "image_4685.rgb", "image_4718.rgb", "image_4752.rgb", "image_4785.rgb", "image_4818.rgb", "image_4851.rgb", "image_4885.rgb", "image_4918.rgb", "image_4952.rgb", "image_4985.rgb", "image_5018.rgb", "image_5051.rgb", "image_5085.rgb", "image_5118.rgb", "image_5151.rgb", "image_5185.rgb", "image_5218.rgb", "image_5252.rgb", "image_5285.rgb", "image_5318.rgb", "image_5351.rgb", "image_5385.rgb", "image_5418.rgb", "image_5452.rgb", "image_5485.rgb", "image_5518.rgb", "image_5552.rgb", "image_5585.rgb", "image_5618.rgb", "image_5651.rgb", "image_5685.rgb", "image_5718.rgb", "image_5751.rgb", "image_5785.rgb", "image_5818.rgb", "image_5851.rgb", "image_5885.rgb", "image_5918.rgb", "image_5951.rgb", "image_5985.rgb", "image_6018.rgb", "image_6051.rgb", "image_6084.rgb", "image_6118.rgb", "image_6152.rgb", "image_6185.rgb", "image_6218.rgb", "image_6251.rgb", "image_6285.rgb", "image_6318.rgb" };
 
 	//string folder = "statique_zmax_version_1";
 	//string images[] = { "image_0.rgb", "image_20.rgb", "image_53.rgb", "image_86.rgb", "image_121.rgb", "image_156.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_318.rgb", "image_352.rgb", "image_385.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_518.rgb", "image_552.rgb", "image_585.rgb", "image_618.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_752.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_918.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1084.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1218.rgb", "image_1251.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1451.rgb", "image_1485.rgb", "image_1518.rgb", "image_1551.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1684.rgb", "image_1718.rgb", "image_1751.rgb", "image_1785.rgb", "image_1818.rgb", "image_1851.rgb", "image_1884.rgb", "image_1918.rgb", "image_1951.rgb", "image_1985.rgb", "image_2018.rgb", "image_2051.rgb", "image_2084.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2251.rgb", "image_2284.rgb", "image_2318.rgb", "image_2351.rgb", "image_2384.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2584.rgb", "image_2618.rgb", "image_2651.rgb", "image_2684.rgb", "image_2718.rgb" };
@@ -867,8 +907,8 @@ int main(int argc, char **argv)
 	//string folder = "vitesse_max_version_1";
 	//string images[] = { "image_718.rgb", "image_751.rgb", "image_785.rgb", "image_818.rgb", "image_852.rgb", "image_884.rgb", "image_918.rgb", "image_951.rgb", "image_985.rgb", "image_1018.rgb", "image_1051.rgb", "image_1084.rgb", "image_1118.rgb", "image_1151.rgb", "image_1184.rgb", "image_1218.rgb" };
 
-	//string folder = "vitesse_max_version_2";
-	//string images[] = { "image_752.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_986.rgb", "image_1019.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb" };
+	string folder = "vitesse_max_version_2";
+	string images[] = { "image_752.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_986.rgb", "image_1019.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb" };
 
 	//string folder = "vitesse_max_version_3";
 	//string images[] = { "image_652.rgb", "image_686.rgb", "image_720.rgb", "image_753.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_920.rgb", "image_953.rgb", "image_987.rgb", "image_1020.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1153.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb", "image_1386.rgb", "image_1420.rgb", "image_1453.rgb", "image_1486.rgb", "image_1519.rgb", "image_1553.rgb", "image_1586.rgb", "image_1619.rgb", "image_1653.rgb", "image_1686.rgb", "image_1720.rgb", "image_1753.rgb", "image_1786.rgb", "image_1819.rgb", "image_1853.rgb", "image_1887.rgb", "image_1919.rgb", "image_1952.rgb" };
@@ -887,8 +927,6 @@ int main(int argc, char **argv)
 
 	// operation to be timed ...
 	
-	auto finish = std::chrono::high_resolution_clock::now();
-
 	auto finish = std::chrono::high_resolution_clock::now();
 
 	cout << folder << endl;
