@@ -1,4 +1,4 @@
-function [posBille] = Correlation(image, bille, rayonBille, coinHautGaucheImage, centrePlaque, rayonPlaque)
+function [posBille, maximum] = Correlation(image, bille, rayonBille, coinHautGaucheImage, centrePlaque, rayonPlaque)
     % Faire la correlation entre l'image de la bille et l'image
     % courante
     corr = normxcorr2(bille, image);
@@ -28,4 +28,5 @@ function [posBille] = Correlation(image, bille, rayonBille, coinHautGaucheImage,
             corr(x(1),y(1)) = 0;
         end
     end
+    maximum = val;
 end
