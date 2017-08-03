@@ -15,28 +15,15 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include <direct.h>
-#define GetCurrentDir _getcwd
 
 using namespace std;
+
 namespace
 {
 	const int IMAGE_WIDTH = 480;
 	const int IMAGE_HEIGHT = 480;
-
-	const int IMAGE_WIDTH_X3 = IMAGE_WIDTH * 3;
-	const int IMAGE_HEIGHT_X3 = IMAGE_HEIGHT * 3;
-
-	const int HALF_IMAGE_WIDTH = IMAGE_WIDTH / 2;
-	const int HALF_IMAGE_HEIGHT = IMAGE_HEIGHT / 2;
-
-	const int THIRD_IMAGE_WIDTH = IMAGE_WIDTH / 3;
-	const int THIRD_IMAGE_HEIGHT = IMAGE_HEIGHT / 3;
-
-	const int TWO_THIRD_IMAGE_WIDTH = 2 * THIRD_IMAGE_WIDTH;
-	const int TWO_THIRD_IMAGE_HEIGHT = 2 * THIRD_IMAGE_HEIGHT;
-
 	const int IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 3;
+
 	const int RED = 0, GREEN = 1, BLUE = 2;
 
 	const double MAX_SCALE = 0.5;
@@ -50,6 +37,7 @@ namespace
 
 	const int BILLE_WIDTH = 27;
 	const int BILLE_HEIGHT = 27;
+	const int CORR_BILLE = 11996;
 	const uint8_t IMAGE_BILLE_VERTE_INVERSE[] = {
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
 		0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 6 , 1 ,15 , 1 ,14 , 1 , 3 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
@@ -95,6 +83,14 @@ struct Coords
 		: x_left(x_left), x_right(x_right), y_top(y_top), y_bottom(y_bottom)
 	{}
 
+	void operator+=(int value)
+	{
+		x_left -= value;
+		x_right += value;
+		y_top -= value;
+		y_bottom += value;
+	}
+
 	int x_left;
 	int x_right;
 	int y_top;
@@ -111,19 +107,6 @@ struct Point
 	T x;
 	T y;
 };
-
-template <typename Txt, typename Val>
-void disp(Txt txt, Val val)
-{
-	cout << txt << " = " << val << endl;
-}
-
-template <typename Txt, typename Val, typename... Args>
-void disp(Txt txt, Val val, Args... args)
-{
-	cout << txt << " = " << val << " :: ";
-	disp(args...);
-}
 
 //Modifiez cette classe-ci, vous pouvez faire littéralement ce que vous voulez y compris la renommer
 //à condition de faire un "replace all"
@@ -164,13 +147,14 @@ public:
 	 */
 	virtual void OnBallPosition(double in_dXPos, double in_dYPos, double & out_dXDiff, double & out_dYDiff);
 
-	void detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Coords& out_coords, Point<int>& out_center);
+	void detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Point<int> in_imageSize, 
+		Coords& out_coords, Point<int>& out_center);
 
 	void trouverPosBille(const boost::shared_array<uint8_t> in_ptrImage,
 		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
 		int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle);
 
-	void trouverPosBille2(const boost::shared_array<uint8_t> in_ptrImage,
+	void trouverPosBilleDecimated(const boost::shared_array<uint8_t> in_ptrImage,
 		const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
 		int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle);
 
@@ -212,7 +196,7 @@ DummyImageProcessingPlugin::DummyImageProcessingPlugin()
 
 DummyImageProcessingPlugin::~DummyImageProcessingPlugin()
 {
-//Insérez votre code ici
+
 }
 
 void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_ptrImage, unsigned int in_unWidth, 
@@ -222,45 +206,76 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 	Point<int> centrePlaque;
 	Point<int> posBille;
 
-	detectionPlaque(in_ptrImage, coordsPlaque, centrePlaque);
+	Point<int> sizeImage(in_unWidth, in_unHeight);
+	Point<int> sizeBille(BILLE_WIDTH, BILLE_HEIGHT);
+
+	detectionPlaque(in_ptrImage, sizeImage, coordsPlaque, centrePlaque);
 
 	int rayonPlaque = (coordsPlaque.x_right - coordsPlaque.x_left + coordsPlaque.y_bottom - coordsPlaque.y_top) / 4;
 	pixPerM = rayonPlaque / RAYON_PLAQUE_M;
 
-	if (isPosKnown)
-	{
-		if (isCollision)
-		{
-			isCollision = false;
-			trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
-				centrePlaque, rayonPlaque, prochaineCorr, posBille);
-			trouverPosCercleCorr(posBille, prochaineCorr);
-		}
-		else if (isDecimatedRequired)
-		{
-			isDecimatedRequired = false;
-			trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
-				centrePlaque, rayonPlaque, prochaineCorr, posBille);
-			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
-			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
-			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
-		}
-		else
-		{
-			trouverPosBille(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
-				centrePlaque, rayonPlaque, prochaineCorr, posBille);
-			lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
-			lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
-			trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);
-		}
+	bool isPlaqueScanned = false;
+    do
+    {
+	    if (isPosKnown)
+	    {
+		    if (isCollision)
+		    {
+				isCollision = false;
+				trouverPosBilleDecimated(in_ptrImage, sizeImage, sizeBille, centrePlaque, rayonPlaque, prochaineCorr, posBille);
+				if (posBille.x == -1 && posBille.y == -1)
+				{
+				    isPosKnown = false;
+					prochaineCorr += BILLE_WIDTH / 2;
+					inverseImage(in_ptrImage, sizeImage, prochaineCorr);
+				}
+				else
+				{
+			        trouverPosCercleCorr(posBille, prochaineCorr);		
+					isDecimatedRequired = true;
+				}
+		    }
+		    else
+		    {
+				if (isDecimatedRequired)
+				{
+					isDecimatedRequired = false;
+					trouverPosBilleDecimated(in_ptrImage, sizeImage, sizeBille, centrePlaque, rayonPlaque, prochaineCorr, posBille);
+				}
+				else
+				{
+					trouverPosBille(in_ptrImage, sizeImage, sizeBille, centrePlaque, rayonPlaque, prochaineCorr, posBille);
+				}
+			    
+				if (posBille.x == -1 && posBille.y == -1)
+				{
+				    isPosKnown = false;
+					prochaineCorr += BILLE_WIDTH / 2;
+					inverseImage(in_ptrImage, sizeImage, prochaineCorr);
+				}
+				else
+				{	
+			        lastVitesse.x = (posBille.x - lastPos.x) * FHZ;
+			        lastVitesse.y = (posBille.y - lastPos.y) * FHZ;
+			        trouverPosCercleCorr(posBille, lastVitesse, centrePlaque, rayonPlaque, prochaineCorr);			
+				}
+		    }
+	    }
+	    else
+	    {
+			trouverPosBilleDecimated(in_ptrImage, sizeImage, sizeBille, centrePlaque, rayonPlaque, coordsPlaque, posBille);
+			isPlaqueScanned = true;
+
+			if (posBille.x != -1 && posBille.y != -1)
+			{
+				trouverPosCercleCorr(posBille, prochaineCorr);
+				isPosKnown = true;
+				isDecimatedRequired = true;
+			}
+	    }
 	}
-	else
-	{
-		trouverPosBille2(in_ptrImage, Point<int>(in_unWidth, in_unHeight), Point<int>(BILLE_WIDTH, BILLE_HEIGHT),
-			centrePlaque, rayonPlaque, coordsPlaque, posBille);
-		trouverPosCercleCorr(posBille, prochaineCorr);
-		isPosKnown = true;
-	}
+	while (!isPlaqueScanned && !isPosKnown);
+	
 	lastPos = posBille;
 
 	out_dXPos = posBille.x;
@@ -269,23 +284,21 @@ void DummyImageProcessingPlugin::OnImage(const boost::shared_array<uint8_t> in_p
 
 void DummyImageProcessingPlugin::OnBallPosition(double in_dXPos, double in_dYPos, double & out_dXDiff, double & out_dYDiff)
 {
-	if (isPosKnown)
-	{
-
-	}
-	else
-	{
-		lastPos.x = in_dXPos;
-		lastPos.y = in_dYPos;
-	}
-
 	out_dXDiff = lastVitesse.x;
 	out_dYDiff = lastVitesse.y;
 }
 
-void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Coords& out_coords, 
-		Point<int>& out_center)
+void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8_t> in_ptrImage, Point<int> in_imageSize,
+	Coords& out_coords, Point<int>& out_center)
 {
+	const unsigned int imageWidthX3 = in_imageSize.x * 3;
+	const unsigned int halfImageHeight = in_imageSize.y / 2;
+	const unsigned int thirdImageWidth = in_imageSize.y / 3;
+	const unsigned int thirdImageHeight = in_imageSize.y / 3;
+	const unsigned int twoThirdImageWidth = thirdImageWidth * 2;
+	const unsigned int twoThirdImageHeight = thirdImageHeight * 2;
+	const unsigned int imageSize = imageWidthX3 * in_imageSize.y;
+	
 	int index_X[] = { 0 , 0 };
 	int index_Y[] = { 0 , 0 };
 	double intensity_X[] = { 0 , 0 };
@@ -293,29 +306,29 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 
 	int gx = 0, gy = 0;
 	double g = 0;
-	int efficient_index_minus = 0;
-	int efficient_index_plus = 0;
+	unsigned int efficient_index_minus = 0;
+	unsigned int efficient_index_plus = 0;
 
 	// Detection du dessus de la plaque
 
 	double max = 0;
 	double max_chosen = 0;
-	int pos = HALF_IMAGE_WIDTH * 3 + IMAGE_WIDTH_X3 + GREEN;
+	unsigned int pos = imageWidthX3 * 1.5 + GREEN;
 
-	for (int j = 1; j < THIRD_IMAGE_HEIGHT; j++)
+	for (unsigned int j = 1; j < thirdImageHeight; j++)
 	{
 		efficient_index_minus = pos - 3;
 		efficient_index_plus = pos + 3;
 
-		gx = in_ptrImage[efficient_index_minus - IMAGE_WIDTH_X3]
+		gx = in_ptrImage[efficient_index_minus - imageWidthX3]
 			+ in_ptrImage[efficient_index_minus]
-			+ in_ptrImage[efficient_index_minus + IMAGE_WIDTH_X3]
-			- in_ptrImage[efficient_index_plus - IMAGE_WIDTH_X3]
+			+ in_ptrImage[efficient_index_minus + imageWidthX3]
+			- in_ptrImage[efficient_index_plus - imageWidthX3]
 			- in_ptrImage[efficient_index_plus]
-			- in_ptrImage[efficient_index_plus + IMAGE_WIDTH_X3];
+			- in_ptrImage[efficient_index_plus + imageWidthX3];
 
-		efficient_index_minus = pos - IMAGE_WIDTH_X3;
-		efficient_index_plus = pos + IMAGE_WIDTH_X3;
+		efficient_index_minus = pos - imageWidthX3;
+		efficient_index_plus = pos + imageWidthX3;
 
 		gy = in_ptrImage[efficient_index_minus - 3]
 			+ in_ptrImage[efficient_index_minus]
@@ -336,29 +349,29 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 				max = max_chosen;
 			}
 		}
-		pos += IMAGE_WIDTH_X3;
+		pos += imageWidthX3;
 	}
 
 	// Detection du dessous de la plaque
 
 	max = 0;
 	max_chosen = 0;
-	pos = IMAGE_SIZE - HALF_IMAGE_WIDTH * 3 - IMAGE_WIDTH_X3 + GREEN;
+	pos = imageSize - imageWidthX3 * 1.5 + GREEN;
 
-	for (int j = IMAGE_HEIGHT - 2; j > TWO_THIRD_IMAGE_HEIGHT; j--)
+	for (unsigned int j = in_imageSize.y - 2; j > twoThirdImageHeight; j--)
 	{
 		efficient_index_minus = pos - 3;
 		efficient_index_plus = pos + 3;
 
-		gx = in_ptrImage[efficient_index_minus - IMAGE_WIDTH_X3]
+		gx = in_ptrImage[efficient_index_minus - imageWidthX3]
 			+ in_ptrImage[efficient_index_minus]
-			+ in_ptrImage[efficient_index_minus + IMAGE_WIDTH_X3]
-			- in_ptrImage[efficient_index_plus - IMAGE_WIDTH_X3]
+			+ in_ptrImage[efficient_index_minus + imageWidthX3]
+			- in_ptrImage[efficient_index_plus - imageWidthX3]
 			- in_ptrImage[efficient_index_plus]
-			- in_ptrImage[efficient_index_plus + IMAGE_WIDTH_X3];
+			- in_ptrImage[efficient_index_plus + imageWidthX3];
 
-		efficient_index_minus = pos - IMAGE_WIDTH_X3;
-		efficient_index_plus = pos + IMAGE_WIDTH_X3;
+		efficient_index_minus = pos - imageWidthX3;
+		efficient_index_plus = pos + imageWidthX3;
 
 		gy = in_ptrImage[efficient_index_minus - 3]
 			+ in_ptrImage[efficient_index_minus]
@@ -379,29 +392,29 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 				max = max_chosen;
 			}
 		}
-		pos -= IMAGE_WIDTH_X3;
+		pos -= imageWidthX3;
 	}
 
 	// Detection du cote gauche de la plaque
 
 	max = 0;
 	max_chosen = 0;
-	pos = (HALF_IMAGE_HEIGHT - 1) * IMAGE_WIDTH_X3 + 3 + GREEN;
+	pos = (halfImageHeight - 1) * imageWidthX3 + 3 + GREEN;
 
-	for (int i = 1; i < THIRD_IMAGE_WIDTH; i++)
+	for (unsigned int i = 1; i < thirdImageWidth; i++)
 	{
 		efficient_index_minus = pos - 3;
 		efficient_index_plus = pos + 3;
 
-		gx = in_ptrImage[efficient_index_minus - IMAGE_WIDTH_X3]
+		gx = in_ptrImage[efficient_index_minus - imageWidthX3]
 			+ in_ptrImage[efficient_index_minus]
-			+ in_ptrImage[efficient_index_minus + IMAGE_WIDTH_X3]
-			- in_ptrImage[efficient_index_plus - IMAGE_WIDTH_X3]
+			+ in_ptrImage[efficient_index_minus + imageWidthX3]
+			- in_ptrImage[efficient_index_plus - imageWidthX3]
 			- in_ptrImage[efficient_index_plus]
-			- in_ptrImage[efficient_index_plus + IMAGE_WIDTH_X3];
+			- in_ptrImage[efficient_index_plus + imageWidthX3];
 
-		efficient_index_minus = pos - IMAGE_WIDTH_X3;
-		efficient_index_plus = pos + IMAGE_WIDTH_X3;
+		efficient_index_minus = pos - imageWidthX3;
+		efficient_index_plus = pos + imageWidthX3;
 
 		gy = in_ptrImage[efficient_index_minus - 3]
 			+ in_ptrImage[efficient_index_minus]
@@ -429,22 +442,22 @@ void DummyImageProcessingPlugin::detectionPlaque(const boost::shared_array<uint8
 
 	max = 0;
 	max_chosen = 0;
-	pos = HALF_IMAGE_HEIGHT * IMAGE_WIDTH_X3 - 6 + GREEN;
+	pos = halfImageHeight * imageWidthX3 - 6 + GREEN;
 
-	for (int i = IMAGE_WIDTH - 2; i > TWO_THIRD_IMAGE_WIDTH; i--)
+	for (unsigned int i = in_imageSize.x - 2; i > twoThirdImageWidth; i--)
 	{
 		efficient_index_minus = pos - 3;
 		efficient_index_plus = pos + 3;
 
-		gx = in_ptrImage[efficient_index_minus - IMAGE_WIDTH_X3]
+		gx = in_ptrImage[efficient_index_minus - imageWidthX3]
 			+ in_ptrImage[efficient_index_minus]
-			+ in_ptrImage[efficient_index_minus + IMAGE_WIDTH_X3]
-			- in_ptrImage[efficient_index_plus - IMAGE_WIDTH_X3]
+			+ in_ptrImage[efficient_index_minus + imageWidthX3]
+			- in_ptrImage[efficient_index_plus - imageWidthX3]
 			- in_ptrImage[efficient_index_plus]
-			- in_ptrImage[efficient_index_plus + IMAGE_WIDTH_X3];
+			- in_ptrImage[efficient_index_plus + imageWidthX3];
 
-		efficient_index_minus = pos - IMAGE_WIDTH_X3;
-		efficient_index_plus = pos + IMAGE_WIDTH_X3;
+		efficient_index_minus = pos - imageWidthX3;
+		efficient_index_plus = pos + imageWidthX3;
 
 		gy = in_ptrImage[efficient_index_minus - 3]
 			+ in_ptrImage[efficient_index_minus]
@@ -511,10 +524,8 @@ void DummyImageProcessingPlugin::trouverPosBille(boost::shared_array<uint8_t> in
 {
 	const int halfBille = in_billeSize.y / 2;
 
-	Coords rectCorr(in_cercleCorr.x_left - halfBille,
-		in_cercleCorr.x_right + halfBille,
-		in_cercleCorr.y_top - halfBille,
-		in_cercleCorr.y_bottom + halfBille);
+	Coords rectCorr(in_cercleCorr);
+	rectCorr += halfBille;
 
 	if (rectCorr.x_left < 0)
 	{
@@ -543,7 +554,7 @@ void DummyImageProcessingPlugin::trouverPosBille(boost::shared_array<uint8_t> in
 		in_centrePlaque, in_rayon, in_cercleCorr, GREEN, out_positionBalle);
 }
 
-void DummyImageProcessingPlugin::trouverPosBille2(boost::shared_array<uint8_t> in_ptrImage,
+void DummyImageProcessingPlugin::trouverPosBilleDecimated(boost::shared_array<uint8_t> in_ptrImage,
 	const Point<int>& in_imageSize, const Point<int>& in_billeSize, const Point<int>& in_centrePlaque,
 	int in_rayon, Coords& in_cercleCorr, Point<int>& out_positionBalle)
 {
@@ -561,10 +572,8 @@ void DummyImageProcessingPlugin::trouverPosBille2(boost::shared_array<uint8_t> i
 		in_cercleCorr.y_bottom += FAST_CORR_COEF - dy;
 	}
 
-	Coords rectCorr(in_cercleCorr.x_left - FAST_CORR_COEF * halfBilleNorm,
-		in_cercleCorr.x_right + FAST_CORR_COEF * halfBilleNorm,
-		in_cercleCorr.y_top - FAST_CORR_COEF * halfBilleNorm,
-		in_cercleCorr.y_bottom + FAST_CORR_COEF * halfBilleNorm);
+	Coords rectCorr(in_cercleCorr);
+	rectCorr += FAST_CORR_COEF * halfBilleNorm;
 
 	if (rectCorr.x_left < 0)
 	{
@@ -644,23 +653,24 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 {
 	const int halfBille = in_billeSize.y / 2;
 	const int imageWidthX3 = in_imageSize.x * 3;
-	const int rayonBillePlaque = in_billeSize.y + in_rayon;
+	const int rayonBilleMoinsPlaque = in_billeSize.y - in_rayon;
 	
-	int indexBalle;
-	int conditionBilleX;
+	unsigned int indexBalle;
+	unsigned int conditionBilleX;
 
-	const int conditionBilleY = in_billeSize.y * in_billeSize.x;
+	const unsigned int conditionBilleY = in_billeSize.y * in_billeSize.x;
 
-	int lastPos1, lastPos2, lastPos3;
-	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + in_rgb;
-	int conditionX = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_right * 3;
+	unsigned int lastPos1, lastPos2, lastPos3;
+	unsigned int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + in_rgb;
+	unsigned int conditionX = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_right * 3;
 	
-	const int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
-	const int leftCorner = halfBille * (imageWidthX3 + 3);
+	const unsigned int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	const unsigned int leftCorner = halfBille * (imageWidthX3 + 3);
 
-	int max = 0, scale = 0;
-	int indexX = 0, indexY = 0;
-	int dx = 0, dy = 0;
+	unsigned int max = 0, corr = 0;
+	double scale = 0;
+	unsigned int indexX = 0, indexY = 0;
+	unsigned int dx = 0, dy = 0, d = 0, dMax = 0;
 
 	while (pos < conditionY)
 	{
@@ -673,7 +683,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 			indexBalle = 0;
 			conditionBilleX = in_billeSize.x;
 
-			int corr = 0;
+			corr = 0;
 
 			while (indexBalle < conditionBilleY)
 			{
@@ -697,7 +707,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 				indexX = indexX % in_imageSize.x;
 				dy = indexY - in_centrePlaque.y;
 				dx = indexX - in_centrePlaque.x;
-				int d = sqrt(dy*dy + dx*dx);
+				d = sqrt(dy*dy + dx*dx);
 
 				if (d < in_rayon)
 				{
@@ -705,10 +715,11 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 					{
 						if (d + in_billeSize.x > in_rayon)
 						{
-							scale = (d - rayonBillePlaque) / halfBille;
+							scale = (d + rayonBilleMoinsPlaque) / (in_billeSize.x / 2.0);
 							if (max < corr / scale)
 							{
 								max = corr / scale;
+								dMax = d;
 								out_positionBalle.x = indexX;
 								out_positionBalle.y = indexY;
 							}
@@ -716,6 +727,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 						else
 						{
 							max = corr;
+							dMax = d;
 							out_positionBalle.x = indexX;
 							out_positionBalle.y = indexY;
 						}
@@ -723,6 +735,7 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 					else
 					{
 						max = corr;
+						dMax = d;
 						out_positionBalle.x = indexX;
 						out_positionBalle.y = indexY;
 					}
@@ -733,6 +746,15 @@ void DummyImageProcessingPlugin::correlation(const boost::shared_array<uint8_t> 
 		conditionX += imageWidthX3;
 		pos = lastPos1 + imageWidthX3;
 	}
+
+	max /= (in_billeSize.x * in_billeSize.y);
+	double rate = max / double(CORR_BILLE);
+
+	if (rate < 0.7 && in_rgb == GREEN)
+	{
+		out_positionBalle.x = -1;
+		out_positionBalle.y = -1;
+	}
 }
 
 void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_ptrImage, 
@@ -740,10 +762,12 @@ void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_pt
 {
 	const int imageWidthX3 = in_imageSize.x * 3;
 	
-	int lastPos;
-	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
-	int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
-	int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
+	unsigned int lastPos;
+	unsigned int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	unsigned int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	unsigned int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
+
+	int moyenne = 0;
 
 	while (pos < conditionY)
 	{
@@ -752,12 +776,19 @@ void DummyImageProcessingPlugin::inverseImage(boost::shared_array<uint8_t> in_pt
 		while (pos < conditionX)
 		{
 			in_ptrImage[pos] = 255 - in_ptrImage[pos];
+			//moyenne += in_ptrImage[pos];
 			pos += 3;
 		}
 
 		conditionX += imageWidthX3;
 		pos = lastPos + imageWidthX3;
 	}
+
+	//int corrSize = (in_cercleCorr.x_right - in_cercleCorr.x_left) * (in_cercleCorr.y_bottom - in_cercleCorr.y_top);
+	//moyenne /= corrSize;
+	//int moyBille = SOMME_BILLE / corrSize;
+	//cout << "Moyenne = " << moyenne << endl;
+	//cout << "Moyenne Bille = " << moyBille << endl;
 }
 
 void DummyImageProcessingPlugin::decimation(const boost::shared_array<uint8_t> in_ptrImage, 
@@ -767,14 +798,14 @@ void DummyImageProcessingPlugin::decimation(const boost::shared_array<uint8_t> i
 	const Point<int> outputSize((in_cercleCorr.x_right - in_cercleCorr.x_left + 1) * 3 / in_n, 
 		(in_cercleCorr.y_bottom - in_cercleCorr.y_top + 1) / in_n);
 
-	int lastPos;
+	unsigned int lastPos;
 	
-	int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
-	int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
-	int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
+	unsigned int pos = in_cercleCorr.y_top * imageWidthX3 + in_cercleCorr.x_left * 3 + GREEN;
+	unsigned int conditionY = (in_cercleCorr.y_bottom + 1) * imageWidthX3;
+	unsigned int conditionX = in_cercleCorr.y_top * imageWidthX3 + (in_cercleCorr.x_right + 1) * 3;
 
-	int index = (in_cercleCorr.y_top / in_n) * (imageWidthX3 / in_n) + 3*(in_cercleCorr.x_left/in_n) , lastIndex;
-	int i = 0, j = 0;
+	unsigned int index = (in_cercleCorr.y_top / in_n) * (imageWidthX3 / in_n) + 3*(in_cercleCorr.x_left/in_n) , lastIndex;
+	unsigned int i = 0, j = 0;
 	while (pos < conditionY)
 	{
 		lastIndex = index;
@@ -814,7 +845,6 @@ void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_posit
 	out_coords.x_right = in_positionBalle.x + deplacement_max;
 	out_coords.y_top = in_positionBalle.y - deplacement_max;
 	out_coords.y_bottom = in_positionBalle.y + deplacement_max;
-	isDecimatedRequired = true;
 }
 
 void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_positionBalle, const Point<double>& in_vitesse, 
@@ -846,6 +876,7 @@ void DummyImageProcessingPlugin::trouverPosCercleCorr(const Point<int>& in_posit
 int getImage(string& argv, boost::shared_array<uint8_t> image)
 {
 	// Open image file
+	
 	ifstream image_file(argv, ios::binary);
 	if (!image_file)
 	{
@@ -864,57 +895,13 @@ int getImage(string& argv, boost::shared_array<uint8_t> image)
 
 	// Read file
 	image_file.read(reinterpret_cast<char *>(image.get()), IMAGE_SIZE);
+	
+	return 0 ;
 }
 
 int main(int argc, char **argv)
 {
-	if (argc != 2)
-	{
-		cerr << "Erreur: Vous devez specifier seulement l'image a charger" << endl;
-		return EXIT_FAILURE;
-	}
-
-	char cCurrentPath[FILENAME_MAX];
-
-	if (!GetCurrentDir(cCurrentPath, sizeof(cCurrentPath)))
-	{
-		return errno;
-	}
-
-	cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
-
-	//string folder = "asservissement_actif";
-	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_122.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_786.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1085.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2585.rgb", "image_2619.rgb", "image_2652.rgb", "image_2685.rgb", "image_2718.rgb", "image_2752.rgb", "image_2785.rgb", "image_2819.rgb", "image_2852.rgb", "image_2885.rgb", "image_2918.rgb", "image_2952.rgb", "image_2985.rgb", "image_3019.rgb", "image_3052.rgb", "image_3085.rgb", "image_3119.rgb", "image_3152.rgb", "image_3185.rgb", "image_3218.rgb", "image_3252.rgb", "image_3285.rgb", "image_3318.rgb", "image_3351.rgb", "image_3385.rgb", "image_3418.rgb", "image_3452.rgb", "image_3485.rgb", "image_3518.rgb", "image_3552.rgb", "image_3585.rgb", "image_3618.rgb", "image_3651.rgb", "image_3685.rgb", "image_3719.rgb", "image_3752.rgb", "image_3785.rgb", "image_3818.rgb", "image_3852.rgb", "image_3885.rgb", "image_3918.rgb", "image_3951.rgb", "image_3985.rgb", "image_4018.rgb", "image_4051.rgb", "image_4085.rgb", "image_4118.rgb", "image_4152.rgb", "image_4185.rgb", "image_4218.rgb", "image_4251.rgb", "image_4285.rgb", "image_4318.rgb", "image_4352.rgb", "image_4385.rgb", "image_4418.rgb", "image_4452.rgb", "image_4485.rgb", "image_4518.rgb", "image_4551.rgb", "image_4585.rgb", "image_4618.rgb", "image_4652.rgb", "image_4685.rgb", "image_4718.rgb", "image_4752.rgb", "image_4785.rgb", "image_4818.rgb", "image_4851.rgb", "image_4885.rgb", "image_4918.rgb", "image_4952.rgb", "image_4985.rgb", "image_5018.rgb", "image_5051.rgb", "image_5085.rgb", "image_5118.rgb", "image_5151.rgb", "image_5185.rgb", "image_5218.rgb", "image_5252.rgb", "image_5285.rgb", "image_5318.rgb", "image_5351.rgb", "image_5385.rgb", "image_5418.rgb", "image_5452.rgb", "image_5485.rgb", "image_5518.rgb", "image_5552.rgb", "image_5585.rgb", "image_5618.rgb", "image_5651.rgb", "image_5685.rgb", "image_5718.rgb", "image_5751.rgb", "image_5785.rgb", "image_5818.rgb", "image_5851.rgb", "image_5885.rgb", "image_5918.rgb", "image_5951.rgb", "image_5985.rgb", "image_6018.rgb", "image_6051.rgb", "image_6084.rgb", "image_6118.rgb", "image_6152.rgb", "image_6185.rgb", "image_6218.rgb", "image_6251.rgb", "image_6285.rgb", "image_6318.rgb" };
-
-	//string folder = "statique_zmax_version_1";
-	//string images[] = { "image_0.rgb", "image_20.rgb", "image_53.rgb", "image_86.rgb", "image_121.rgb", "image_156.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_318.rgb", "image_352.rgb", "image_385.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_518.rgb", "image_552.rgb", "image_585.rgb", "image_618.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_752.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_918.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1084.rgb", "image_1118.rgb", "image_1152.rgb", "image_1185.rgb", "image_1218.rgb", "image_1251.rgb", "image_1285.rgb", "image_1318.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1451.rgb", "image_1485.rgb", "image_1518.rgb", "image_1551.rgb", "image_1585.rgb", "image_1618.rgb", "image_1651.rgb", "image_1684.rgb", "image_1718.rgb", "image_1751.rgb", "image_1785.rgb", "image_1818.rgb", "image_1851.rgb", "image_1884.rgb", "image_1918.rgb", "image_1951.rgb", "image_1985.rgb", "image_2018.rgb", "image_2051.rgb", "image_2084.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2251.rgb", "image_2284.rgb", "image_2318.rgb", "image_2351.rgb", "image_2384.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb", "image_2518.rgb", "image_2551.rgb", "image_2584.rgb", "image_2618.rgb", "image_2651.rgb", "image_2684.rgb", "image_2718.rgb" };
-
-	//string folder = "statique_zmax_version_2";
-	//string images[] = { "image_0.rgb", "image_20.rgb", "image_54.rgb", "image_85.rgb", "image_119.rgb", "image_156.rgb", "image_187.rgb", "image_221.rgb", "image_253.rgb", "image_287.rgb", "image_320.rgb", "image_353.rgb", "image_386.rgb", "image_420.rgb", "image_454.rgb", "image_487.rgb", "image_520.rgb", "image_553.rgb", "image_586.rgb", "image_619.rgb", "image_653.rgb", "image_686.rgb", "image_719.rgb", "image_753.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_953.rgb", "image_986.rgb", "image_1020.rgb", "image_1053.rgb", "image_1086.rgb", "image_1119.rgb", "image_1153.rgb", "image_1186.rgb", "image_1219.rgb", "image_1252.rgb", "image_1286.rgb", "image_1320.rgb", "image_1353.rgb", "image_1386.rgb", "image_1419.rgb", "image_1452.rgb", "image_1487.rgb", "image_1519.rgb", "image_1553.rgb", "image_1586.rgb", "image_1619.rgb", "image_1653.rgb", "image_1686.rgb", "image_1719.rgb", "image_1752.rgb", "image_1786.rgb", "image_1819.rgb", "image_1853.rgb", "image_1886.rgb", "image_1919.rgb", "image_1952.rgb", "image_1986.rgb", "image_2019.rgb", "image_2053.rgb", "image_2086.rgb", "image_2119.rgb", "image_2153.rgb", "image_2186.rgb", "image_2219.rgb", "image_2252.rgb", "image_2286.rgb", "image_2320.rgb", "image_2353.rgb", "image_2386.rgb", "image_2419.rgb", "image_2453.rgb", "image_2487.rgb" };
-
-	//string folder = "statique_zmax_version_3";
-	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_85.rgb", "image_123.rgb", "image_155.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_418.rgb", "image_451.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_718.rgb", "image_752.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_885.rgb", "image_918.rgb", "image_952.rgb", "image_985.rgb", "image_1018.rgb", "image_1052.rgb", "image_1086.rgb", "image_1119.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1518.rgb", "image_1552.rgb", "image_1585.rgb", "image_1618.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1751.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2018.rgb", "image_2051.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb" };
-
-	//string folder = "statique_zmin_version_1";
-	//string images[] = { "image_0.rgb", "image_19.rgb", "image_53.rgb", "image_88.rgb", "image_123.rgb", "image_155.rgb", "image_186.rgb", "image_218.rgb", "image_251.rgb", "image_285.rgb", "image_318.rgb", "image_351.rgb", "image_385.rgb", "image_419.rgb", "image_451.rgb", "image_485.rgb", "image_518.rgb", "image_552.rgb", "image_585.rgb", "image_618.rgb", "image_651.rgb", "image_685.rgb", "image_718.rgb", "image_751.rgb", "image_785.rgb", "image_818.rgb", "image_851.rgb", "image_884.rgb", "image_918.rgb", "image_951.rgb", "image_985.rgb", "image_1018.rgb", "image_1051.rgb", "image_1084.rgb", "image_1118.rgb", "image_1151.rgb", "image_1184.rgb", "image_1217.rgb", "image_1251.rgb", "image_1285.rgb", "image_1317.rgb", "image_1351.rgb", "image_1384.rgb", "image_1418.rgb", "image_1451.rgb", "image_1485.rgb", "image_1518.rgb", "image_1551.rgb", "image_1584.rgb", "image_1618.rgb", "image_1651.rgb", "image_1685.rgb", "image_1718.rgb", "image_1751.rgb", "image_1784.rgb", "image_1817.rgb", "image_1851.rgb", "image_1884.rgb", "image_1918.rgb", "image_1951.rgb", "image_1984.rgb", "image_2017.rgb", "image_2051.rgb", "image_2084.rgb", "image_2117.rgb", "image_2151.rgb" };
-
-	//string folder = "statique_zmin_version_2";
-	//string images[] = { "image_0.rgb", "image_21.rgb", "image_53.rgb", "image_86.rgb", "image_124.rgb", "image_154.rgb", "image_186.rgb", "image_219.rgb", "image_252.rgb", "image_285.rgb", "image_319.rgb", "image_352.rgb", "image_386.rgb", "image_421.rgb", "image_452.rgb", "image_485.rgb", "image_519.rgb", "image_552.rgb", "image_585.rgb", "image_619.rgb", "image_652.rgb", "image_685.rgb", "image_719.rgb", "image_752.rgb", "image_785.rgb", "image_819.rgb", "image_852.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1019.rgb", "image_1052.rgb", "image_1085.rgb", "image_1119.rgb", "image_1152.rgb", "image_1185.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1419.rgb", "image_1452.rgb", "image_1485.rgb", "image_1519.rgb", "image_1552.rgb", "image_1585.rgb", "image_1619.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1785.rgb", "image_1818.rgb", "image_1852.rgb", "image_1885.rgb", "image_1918.rgb", "image_1952.rgb", "image_1985.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2118.rgb", "image_2152.rgb", "image_2185.rgb", "image_2218.rgb", "image_2252.rgb", "image_2285.rgb", "image_2318.rgb", "image_2352.rgb", "image_2385.rgb", "image_2418.rgb", "image_2452.rgb", "image_2485.rgb" };
-
-	//string folder = "statique_zmin_version_3";
-	//string images[] = { "image_0.rgb", "image_22.rgb", "image_53.rgb", "image_86.rgb", "image_126.rgb", "image_158.rgb", "image_187.rgb", "image_220.rgb", "image_253.rgb", "image_286.rgb", "image_320.rgb", "image_353.rgb", "image_386.rgb", "image_420.rgb", "image_453.rgb", "image_486.rgb", "image_519.rgb", "image_553.rgb", "image_586.rgb", "image_619.rgb", "image_652.rgb", "image_686.rgb", "image_719.rgb", "image_752.rgb", "image_785.rgb", "image_819.rgb", "image_852.rgb", "image_885.rgb", "image_919.rgb", "image_952.rgb", "image_985.rgb", "image_1019.rgb", "image_1052.rgb", "image_1085.rgb", "image_1119.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1252.rgb", "image_1285.rgb", "image_1319.rgb", "image_1352.rgb", "image_1385.rgb", "image_1418.rgb", "image_1452.rgb", "image_1485.rgb", "image_1519.rgb", "image_1552.rgb", "image_1585.rgb", "image_1619.rgb", "image_1652.rgb", "image_1685.rgb", "image_1718.rgb", "image_1752.rgb", "image_1786.rgb", "image_1819.rgb", "image_1852.rgb", "image_1886.rgb", "image_1919.rgb", "image_1952.rgb", "image_1986.rgb", "image_2019.rgb", "image_2052.rgb", "image_2085.rgb", "image_2119.rgb", "image_2152.rgb", "image_2186.rgb", "image_2219.rgb", "image_2252.rgb", "image_2286.rgb", "image_2319.rgb", "image_2353.rgb", "image_2385.rgb" };
-
-	//string folder = "vitesse_max_version_1";
-	//string images[] = { "image_718.rgb", "image_751.rgb", "image_785.rgb", "image_818.rgb", "image_852.rgb", "image_884.rgb", "image_918.rgb", "image_951.rgb", "image_985.rgb", "image_1018.rgb", "image_1051.rgb", "image_1084.rgb", "image_1118.rgb", "image_1151.rgb", "image_1184.rgb", "image_1218.rgb" };
-
-	string folder = "vitesse_max_version_2";
-	string images[] = { "image_752.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_919.rgb", "image_952.rgb", "image_986.rgb", "image_1019.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1152.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb" };
-
-	//string folder = "vitesse_max_version_3";
-	//string images[] = { "image_652.rgb", "image_686.rgb", "image_720.rgb", "image_753.rgb", "image_786.rgb", "image_820.rgb", "image_853.rgb", "image_886.rgb", "image_920.rgb", "image_953.rgb", "image_987.rgb", "image_1020.rgb", "image_1053.rgb", "image_1086.rgb", "image_1120.rgb", "image_1153.rgb", "image_1186.rgb", "image_1219.rgb", "image_1253.rgb", "image_1286.rgb", "image_1319.rgb", "image_1353.rgb", "image_1386.rgb", "image_1420.rgb", "image_1453.rgb", "image_1486.rgb", "image_1519.rgb", "image_1553.rgb", "image_1586.rgb", "image_1619.rgb", "image_1653.rgb", "image_1686.rgb", "image_1720.rgb", "image_1753.rgb", "image_1786.rgb", "image_1819.rgb", "image_1853.rgb", "image_1887.rgb", "image_1919.rgb", "image_1952.rgb" };
-
-
-	string path = (string)cCurrentPath + "\\..\\..\\..\\images\\" + folder + "\\raw\\";
+	string path = "C:\\Users\\mat_8\\Desktop\\S4\\Projet\\git\\detection\\images\\images_test\\images_test_c++\\rgb\\";
 
 	Point<double> posBalle;
 	Point<double> vitBalle;
@@ -922,18 +909,30 @@ int main(int argc, char **argv)
 	boost::shared_array<uint8_t> image(new uint8_t[IMAGE_SIZE]);
 	
 	string fullPath;
-
+	string imageName;
+	
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// operation to be timed ...
 	
 	auto finish = std::chrono::high_resolution_clock::now();
 
-	cout << folder << endl;
-	int arraySize = (sizeof(images) / sizeof(*images));
-	for (int i = 0; i < arraySize; i++)
+	for (int i = 1; i <= 192; i++)
 	{
-		fullPath = path + images[i];
+	    if ( i < 10 )
+	    {
+	        imageName = "image_00" + std::to_string(i);
+	    }
+	    else if ( i < 100 )
+	    {
+	        imageName = "image_0" + std::to_string(i);
+	    }
+	    else
+	    {
+	        imageName = "image_" + std::to_string(i);
+	    }
+	    
+		fullPath = path + imageName + ".rgb";
 		getImage(fullPath, image);
 
 		start = std::chrono::high_resolution_clock::now();
@@ -943,78 +942,10 @@ int main(int argc, char **argv)
 
 		finish = std::chrono::high_resolution_clock::now();
 
-		cout << i << ".\t" << images[i] << "\t P: (" << posBalle.x << ", " << posBalle.y << ")\tV: (" 
+		cout << i << ".\t" << imageName << "\t P: (" << posBalle.x << ", " << posBalle.y << ")\tV: (" 
 			 << vitBalle.x << ", " << vitBalle.y << ")\tTemps : " 
 			 << chrono::duration_cast<chrono::nanoseconds>(finish - start).count() / 1000000.0 << "ms" << endl;
 	}
-	//boost::shared_array<uint8_t> myImage(new uint8_t[4*4*3]);
-	//boost::shared_array<uint8_t> myImageOut(new uint8_t[2*2*3]);
-	/*
-	boost::shared_array<uint8_t> myImageOut(new uint8_t[25*3]);
-
-	for (int j = 0; j < FAST_CORR_COEF; j++)
-	{
-		for (int i = 0; i < FAST_CORR_COEF * 3; i++)
-		{
-			myImageOut[i + j * FAST_CORR_COEF * 3] = 0;
-		}
-	}
-
-	uint8_t TABLEAU[27*27*3];
-	for (int j = 0; j < 27; j++)
-	{
-		for (int i = 0; i < 27 * 3; i++)
-		{
-			if (i % 3 == 0 || i % 3 == 2)
-			{
-				TABLEAU[i + j * 27*3] = 0;
-			}
-			if (i % 3 == 1)
-			{
-				TABLEAU[i + j * 27 * 3] = IMAGE_BILLE_VERTE_INVERSE[i/3 + j * 27];
-			}
-			cout << int(TABLEAU[i + j * 27 * 3]) << ":";
-		}
-		cout << endl << endl;;
-	}
-
-	dipp.decimation(TABLEAU, Point<int>(27, 27), Coords(0, 24, 0, 24), FAST_CORR_COEF, myImageOut);
-
-	for (int j = 0; j < FAST_CORR_COEF; j++)
-	{
-		for (int i = 0; i < FAST_CORR_COEF * 3; i++)
-		{
-			cout << int(myImageOut[i + j * FAST_CORR_COEF * 3]) << " ";
-		}
-		cout << endl;
-	}
-	
-	/*
-	FILE *imageFile;
-
-	imageFile = fopen("transformedIM.ppm", "wb");
-	if (imageFile == NULL) {
-		perror("ERROR: Cannot open output file");
-		exit(EXIT_FAILURE);
-	}
-
-	fprintf(imageFile, "P3\n");
-	fprintf(imageFile, "%d %d\n", IMAGE_WIDTH, IMAGE_HEIGHT);   // dimensions
-	fprintf(imageFile, "255\n"); // Max pixel
-
-	for (int i = 0; i < IMAGE_SIZE; i += 3) {
-		fprintf(imageFile, "%d %d %d\n", image[i], image[i + GREEN], image[i + 2]);
-	}
-	fclose(imageFile);
-	*/
-
-	// Votre code ici: l'image est un tableau lineaire de uint8.
-	// Chaque pixel contient 3 uint8 soit les composantes: Red, Green, Blue (expliquant le "*3" dans IMAGE_SIZE)
-	// Les pixels sont sotckes en mode: row-major order.
-	// L'outil convert de imagemagick peut etre interessant pour convertir le format d'image si requis:
-	// convert -depth 8 -size 480x480 test.rgb test.png
-
-	//system("pause");
 	return EXIT_SUCCESS;
 }
 
